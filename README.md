@@ -1,1 +1,59 @@
-"# Aevra" 
+# Aevra
+
+Aevra is a self-hostable agentic content intelligence and publishing platform. It grounds campaign work in a workspace-specific Brand Brain, creates platform-native variants, routes them through approval, and hands approved actions to deterministic publishing workers.
+
+> Current milestone: **Phase 0 — foundation complete.** The product UI is a representative, interactive shell backed by demo data. Authentication, persistence, RAG, generation, and live publishing begin in later phases.
+
+## Quick start
+
+### Web workspace
+
+```bash
+pnpm install
+pnpm dev:web
+```
+
+Open `http://localhost:3000`.
+
+### Local infrastructure
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+The web app runs on `http://localhost:3000`; the API health endpoint is `http://localhost:8000/health`.
+
+## Quality checks
+
+```bash
+pnpm check
+python -m compileall apps/api/aevra_api
+```
+
+## Repository map
+
+```text
+apps/
+  web/                  Next.js product workspace
+  api/                  FastAPI edge/API boundary
+  mobile/               Flutter boundary (Phase 12)
+services/
+  agents/               LangGraph orchestration
+  rag/                  Tenant-safe ingestion and retrieval
+  generation/           Text, image, and video providers
+  publishing/           Deterministic publisher adapters
+  analytics/            Normalized metrics and insights
+  workers/              Celery jobs and schedules
+packages/
+  shared/               Cross-runtime constants and contracts
+  schemas/              Versioned API/event schemas
+infrastructure/
+  docker/               Application container definitions
+  migrations/           Database migrations (Phase 1+)
+tests/
+  unit/ integration/ e2e/
+docs/                   Architecture and delivery records
+```
+
+Read [docs/architecture.md](docs/architecture.md) for system boundaries, [docs/roadmap.md](docs/roadmap.md) for the phased plan, and [docs/phase-0-audit.md](docs/phase-0-audit.md) for the current delivery audit.

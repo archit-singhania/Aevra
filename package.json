@@ -1,0 +1,16 @@
+{
+  "name": "aevra",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "workspaces": ["apps/web", "packages/*"],
+  "scripts": {
+    "dev:web": "pnpm --filter @aevra/web dev",
+    "build": "pnpm --filter @aevra/web build",
+    "lint": "pnpm --filter @aevra/web lint",
+    "typecheck": "pnpm --filter @aevra/web typecheck",
+    "format": "pnpm --filter @aevra/web format",
+    "check": "pnpm lint && pnpm typecheck && pnpm build"
+  },
+  "engines": { "node": ">=20.11", "npm": ">=10" }
+}
