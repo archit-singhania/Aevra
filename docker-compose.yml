@@ -35,6 +35,25 @@ services:
     ports: ["9000:9000", "9001:9001"]
     volumes: ["minio_data:/data"]
 
+  migrate:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    env_file: [.env]
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  seed:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    env_file: [.env]
+    command: ["python", "-m", "aevra_api.seed"]
+    profiles: ["tools"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
   api:
     build:
       context: .
@@ -42,8 +61,13 @@ services:
     env_file: [.env]
     ports: ["8000:8000"]
     depends_on:
-      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
   web:
     build:
@@ -52,10 +76,10 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
     ports: ["3000:3000"]
-    depends_on: [api]
+    depends_on:
+      api: { condition: service_healthy }
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
-

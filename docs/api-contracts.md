@@ -9,3 +9,16 @@
 
 The Phase 0 `/health` endpoint is intentionally unversioned and contains no dependency or secret details.
 
+## Implemented endpoints
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/api/v1/auth/register` | Atomically create a user, organization, owner membership, workspace, and access token |
+| POST | `/api/v1/auth/login` | Verify the Argon2 password hash and issue a short-lived bearer token |
+| GET | `/api/v1/auth/me` | Read the authenticated user |
+| GET | `/api/v1/workspaces` | List only workspaces visible through organization membership |
+| GET | `/api/v1/workspaces/{workspace_id}` | Read one authorized workspace without leaking foreign resource existence |
+| POST | `/api/v1/organizations/{organization_id}/workspaces` | Create a workspace as an owner or administrator |
+| GET/POST | `/api/v1/workspaces/{workspace_id}/brands` | List or create tenant-scoped brand profiles |
+| GET/PATCH | `/api/v1/workspaces/{workspace_id}/brands/{brand_id}` | Read or update an authorized brand |
+| GET/POST | `/api/v1/workspaces/{workspace_id}/brands/{brand_id}/rules` | List or create prioritized brand rules |

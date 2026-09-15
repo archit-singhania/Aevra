@@ -2,9 +2,9 @@
 
 | Phase | Scope | Exit gate |
 | --- | --- | --- |
-| 0 | Monorepo, product shell, quality tooling, Docker, architecture docs | Web build and static checks pass; API imports; Compose validates |
-| 1 | PostgreSQL, migrations, users, organizations, workspaces | Tenant lifecycle integration tests pass |
-| 2 | Brand profiles and tenant isolation | Cross-tenant denial tests pass |
+| 0 ✅ | Monorepo, product shell, quality tooling, Docker, architecture docs | Passed |
+| 1 ✅ | PostgreSQL, migrations, users, organizations, workspaces | Passed: auth and tenant lifecycle tests |
+| 2 ✅ | Brand profiles, rules, role permissions, and tenant isolation | Passed: cross-tenant API, repository, and database denial tests |
 | 3 | Ingestion, embeddings, pgvector, cited RAG | Retrieval isolation and citation tests pass |
 | 4 | Local model provider and Qwen/Ollama | Provider contract and offline smoke tests pass |
 | 5 | Campaign models and LangGraph orchestration | State transition and checkpoint tests pass |
@@ -17,4 +17,3 @@
 | 12 | Scheduling, analytics, observability, hardening, mobile | Production and recovery checklist passes |
 
 No later phase starts until the current phase's exit gate is green.
-

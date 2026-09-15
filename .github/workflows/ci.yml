@@ -31,4 +31,11 @@ jobs:
           cache: pip
       - run: pip install -e ".[dev]"
       - run: ruff check .
+      - run: mypy aevra_api
       - run: pytest
+      - run: alembic -c ../../alembic.ini upgrade head
+        env:
+          AEVRA_DATABASE_URL: sqlite:///./ci-migration.db
+      - run: alembic -c ../../alembic.ini downgrade base
+        env:
+          AEVRA_DATABASE_URL: sqlite:///./ci-migration.db
