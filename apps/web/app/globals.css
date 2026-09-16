@@ -1522,6 +1522,55 @@ html[data-theme="light"] .live-search input {
   color: #18251c;
   border-color: rgba(20, 46, 28, 0.16);
 }
+html[data-theme="light"] .webgl-background {
+  opacity: 0.1;
+  filter: saturate(0.55) brightness(1.35);
+  mix-blend-mode: multiply;
+}
+html[data-theme="light"] .grain-overlay {
+  opacity: 0.025;
+  mix-blend-mode: multiply;
+}
+html[data-theme="light"] .live-app {
+  color: #15261a;
+}
+html[data-theme="light"] .live-topbar,
+html[data-theme="light"] .live-sidebar {
+  color: #2f4b38;
+}
+html[data-theme="light"] .live-sidebar nav button {
+  color: #55705c;
+}
+html[data-theme="light"] .live-sidebar nav button:hover,
+html[data-theme="light"] .live-sidebar nav button.active {
+  color: #16351e;
+  background: rgba(115, 180, 66, 0.16);
+}
+html[data-theme="light"] .live-hero h1,
+html[data-theme="light"] .live-panel h2,
+html[data-theme="light"] .live-stats strong,
+html[data-theme="light"] .live-list-row b {
+  color: #142318;
+}
+html[data-theme="light"] .live-hero p:not(.live-kicker),
+html[data-theme="light"] .live-helper,
+html[data-theme="light"] .live-list-row small,
+html[data-theme="light"] .live-stats span,
+html[data-theme="light"] .live-stats small {
+  color: #4d6654;
+}
+html[data-theme="light"] .live-connected {
+  color: #24532d;
+  border-color: rgba(70, 130, 52, 0.38);
+  background: rgba(255, 255, 255, 0.62);
+}
+html[data-theme="light"] .live-command-trigger,
+html[data-theme="light"] .sound-toggle,
+html[data-theme="light"] .live-theme-toggle {
+  color: #31513a;
+  border-color: rgba(33, 72, 42, 0.18);
+  background: rgba(255, 255, 255, 0.58);
+}
 
 .live-hero {
   isolation: isolate;

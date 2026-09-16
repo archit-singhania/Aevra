@@ -77,7 +77,10 @@ export function Reveal({
   ...props
 }: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  // Start visible so a clipped/embedded scroll container can never leave the
+  // workspace blank. The observer still marks the element as revealed for
+  // the transition state and reduced-motion users get an immediate frame.
+  const [visible, setVisible] = useState(true);
   useEffect(() => {
     const node = ref.current;
     if (!node || typeof IntersectionObserver === "undefined") {
