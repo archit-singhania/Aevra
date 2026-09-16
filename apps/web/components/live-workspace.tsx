@@ -1215,7 +1215,7 @@ export function LiveWorkspace() {
   ];
   return (
     <MotionConfig reducedMotion="user">
-      <main className="live-app">
+      <main className={cn("live-app", `view-${view}`)}>
         <WebglBackground />
         <GrainOverlay />
         {themeWipe && <div className={`theme-wipe ${themeWipe}`} aria-hidden="true" />}

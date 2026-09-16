@@ -2813,3 +2813,34 @@ body {
     min-width: 0;
   }
 }
+
+/* Overview is a control-room canvas, not a document. Keep it fully visible
+   in one frame; the creation/review views retain the scroll rail for their
+   denser forms. */
+.live-app.view-overview .live-content {
+  overflow: hidden;
+}
+.live-app.view-overview .live-content .reveal {
+  opacity: 1;
+  transform: none;
+}
+.live-app.view-overview .live-hero {
+  min-height: 116px;
+  margin-bottom: 16px;
+}
+.live-app.view-overview .live-stats {
+  min-height: 94px;
+  margin-bottom: 12px;
+}
+.live-app.view-overview .live-stats article {
+  padding: 13px 15px;
+}
+.live-app.view-overview .live-panel {
+  padding: 16px 18px;
+}
+.live-app.view-overview .live-panel h2 {
+  margin-bottom: 10px;
+}
+.live-app.view-overview .live-list-row {
+  padding: 9px 5px;
+}
