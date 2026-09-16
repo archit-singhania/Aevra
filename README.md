@@ -1,6 +1,6 @@
-# Aevra
+# VAE
 
-Aevra is a self-hostable agentic content intelligence and publishing platform. It grounds campaign work in a workspace-specific Brand Brain, creates platform-native variants, routes them through approval, and hands approved actions to deterministic publishing workers.
+VAE is a self-hostable agentic content intelligence and publishing platform. It grounds campaign work in a workspace-specific Brand Brain, creates platform-native variants, routes them through approval, and hands approved actions to deterministic publishing workers.
 
 > Current milestone: **Phases 0–12 complete.** Aevra now includes authenticated tenant
 > boundaries, a cited Brand Brain, local Qwen/Ollama providers, durable campaign state,
@@ -34,6 +34,23 @@ Initialize the development data once the stack is healthy:
 ```bash
 docker compose --profile tools run --rm seed
 ```
+
+### Browser-driven staging flow
+
+The web app is now connected to the API through a same-origin Next.js proxy. This means a
+public Cloudflare quick tunnel only needs to expose the web port:
+
+```powershell
+docker compose down --remove-orphans
+docker compose up -d --build --remove-orphans
+cloudflared tunnel --url http://localhost:3001
+```
+
+Open the generated `trycloudflare.com` URL, create/sign in to a workspace, then use the
+navigation to create a Brand Brain profile, index evidence, generate a campaign, approve
+variants, generate media, connect a staging publisher, and publish or schedule. The
+browser never receives a platform OAuth token; staging publisher connections use vault
+references and the production OAuth review remains a separate deployment step.
 
 For an API-only local workflow:
 

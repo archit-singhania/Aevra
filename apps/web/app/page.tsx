@@ -1,5 +1,5 @@
-import { AevraWorkspace } from "@/components/aevra-workspace";
+import { LiveWorkspace } from "@/components/live-workspace";
 
 export default function Home() {
-  return <AevraWorkspace />;
+  return <LiveWorkspace />;
 }

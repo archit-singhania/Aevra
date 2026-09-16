@@ -75,7 +75,9 @@ services:
       context: .
       dockerfile: infrastructure/docker/web.Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      # Browser requests use the Next.js same-origin proxy, so a Cloudflare tunnel
+      # exposes the full app instead of only the frontend shell.
+      NEXT_PUBLIC_API_URL: /api/v1
     # Port 3000 is frequently occupied by another local development server.
     # Override AEVRA_WEB_PORT when you want a different host port.
     ports: ["127.0.0.1:${AEVRA_WEB_PORT:-3001}:3000"]
