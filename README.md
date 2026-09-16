@@ -2,11 +2,11 @@
 
 Aevra is a self-hostable agentic content intelligence and publishing platform. It grounds campaign work in a workspace-specific Brand Brain, creates platform-native variants, routes them through approval, and hands approved actions to deterministic publishing workers.
 
-> Current milestone: **Phases 0–8 complete.** Aevra now includes authenticated tenant
+> Current milestone: **Phases 0–10 complete.** Aevra now includes authenticated tenant
 > boundaries, a cited Brand Brain, local Qwen/Ollama providers, durable campaign state,
 > LangGraph orchestration, platform-native content variants, quality validation, revision
-> history, a human approval boundary, deterministic branded image variants, and safe
-> FFmpeg video compositions.
+> history, a human approval boundary, deterministic branded image variants, safe FFmpeg
+> video compositions, idempotent publishing jobs, and a LinkedIn REST connector boundary.
 
 ## Quick start
 
@@ -86,6 +86,16 @@ download. Docker reads Ollama on `host.docker.internal:11434` from `.env`.
   deterministic manifest mode keeps local previews and CI reproducible.
 - `GET /api/v1/workspaces/{workspace_id}/media/assets` lists scoped media assets and
   `GET .../assets/{asset_id}/download` streams an authorized artifact.
+
+## Phase 9–10 publishing API
+
+- `POST /api/v1/workspaces/{workspace_id}/publishing/accounts` registers a connected
+  platform account using a token reference; raw credentials are not returned to clients.
+- `POST /api/v1/workspaces/{workspace_id}/publishing/jobs` creates an idempotent publish
+  job. LinkedIn uses the REST adapter; other platforms use the deterministic mock until
+  their connector phases are delivered.
+- `POST /api/v1/workspaces/{workspace_id}/publishing/jobs/{job_id}/verify` verifies the
+  external post and records the result.
 
 ## Quality checks
 

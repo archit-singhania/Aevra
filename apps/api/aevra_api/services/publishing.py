@@ -1,0 +1,149 @@
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy.orm import Session
+
+from aevra_api.config import Settings
+from aevra_api.db.models import PublishJob, SocialAccount
+from aevra_api.domain.errors import ConflictError, ForbiddenError, NotFoundError
+from aevra_api.publishing.contracts import LinkedInPublisher, MockSocialPublisher, PublisherError
+from aevra_api.publishing.contracts import PublishRequest as ProviderRequest
+from aevra_api.repositories.publishing import PublishingRepository
+from aevra_api.repositories.tenancy import TenancyRepository
+from aevra_api.schemas.publishing import PublishRequest, SocialAccountCreateRequest
+
+EDIT_ROLES = {"owner", "admin", "member"}
+
+
+class PublishingService:
+    def __init__(self, session: Session, settings: Settings) -> None:
+        self.session = session
+        self.settings = settings
+        self.repository = PublishingRepository(session)
+        self.tenancy = TenancyRepository(session)
+        self.mock = MockSocialPublisher()
+
+    def _access(self, user_id: uuid.UUID, workspace_id: uuid.UUID) -> str:
+        access = self.tenancy.get_workspace_access(user_id, workspace_id)
+        if access is None:
+            raise NotFoundError("Workspace not found")
+        return access[1]
+
+    def _editor(self, user_id: uuid.UUID, workspace_id: uuid.UUID) -> None:
+        if self._access(user_id, workspace_id) not in EDIT_ROLES:
+            raise ForbiddenError("Publishing editor access is required")
+
+    def list_accounts(self, user_id: uuid.UUID, workspace_id: uuid.UUID) -> list[SocialAccount]:
+        self._access(user_id, workspace_id)
+        return self.repository.accounts(user_id, workspace_id)
+
+    def connect_account(
+        self, user_id: uuid.UUID, workspace_id: uuid.UUID, request: SocialAccountCreateRequest
+    ) -> SocialAccount:
+        self._editor(user_id, workspace_id)
+        existing = self.repository.account_by_identity(
+            workspace_id, request.platform, request.external_account_id
+        )
+        if existing is not None:
+            existing.display_name = request.display_name.strip()
+            existing.access_token_ref = request.access_token_ref
+            existing.capabilities = request.capabilities
+            existing.status = "connected"
+            self.session.commit()
+            return existing
+        account = SocialAccount(
+            workspace_id=workspace_id,
+            created_by_user_id=user_id,
+            platform=request.platform,
+            external_account_id=request.external_account_id.strip(),
+            display_name=request.display_name.strip(),
+            access_token_ref=request.access_token_ref,
+            capabilities=request.capabilities,
+            status="connected",
+        )
+        self.session.add(account)
+        self.session.commit()
+        return account
+
+    def _publisher(self, platform: str):
+        if platform == "linkedin":
+            return LinkedInPublisher()
+        return self.mock
+
+    def publish(
+        self, user_id: uuid.UUID, workspace_id: uuid.UUID, request: PublishRequest
+    ) -> PublishJob:
+        self._editor(user_id, workspace_id)
+        campaign = self.repository.campaign(user_id, workspace_id, request.campaign_id)
+        if campaign is None:
+            raise NotFoundError("Campaign not found")
+        account = self.repository.account(user_id, workspace_id, request.social_account_id)
+        if account is None or account.status != "connected":
+            raise NotFoundError("Connected social account not found")
+        existing = self.repository.job_by_key(workspace_id, request.idempotency_key)
+        if existing is not None:
+            return existing
+        job = PublishJob(
+            workspace_id=workspace_id,
+            campaign_id=campaign.id,
+            social_account_id=account.id,
+            created_by_user_id=user_id,
+            idempotency_key=request.idempotency_key,
+            status="publishing",
+            payload={"text": request.text, "media_urls": request.media_urls},
+            attempts=1,
+        )
+        self.session.add(job)
+        self.session.flush()
+        try:
+            publisher = self._publisher(account.platform)
+            result = publisher.publish(
+                ProviderRequest(
+                    request.idempotency_key,
+                    account.external_account_id,
+                    request.text,
+                    tuple(request.media_urls),
+                ),
+                access_token=account.access_token_ref,
+            )
+            job.status = "published"
+            job.external_post_id = result.external_post_id
+            job.external_url = result.external_url
+            job.published_at = result.published_at
+            job.payload = {
+                **job.payload,
+                "provider": result.provider,
+                "provider_metadata": result.raw_metadata,
+            }
+        except PublisherError as error:
+            job.status = "failed"
+            job.retryable = error.retryable
+            job.error_message = str(error)
+        self.session.commit()
+        return job
+
+    def verify(self, user_id: uuid.UUID, workspace_id: uuid.UUID, job_id: uuid.UUID) -> PublishJob:
+        self._editor(user_id, workspace_id)
+        job = self.repository.job(user_id, workspace_id, job_id)
+        if job is None:
+            raise NotFoundError("Publish job not found")
+        if not job.external_post_id:
+            raise ConflictError("Publish job has no external post to verify")
+        account = self.repository.account(user_id, workspace_id, job.social_account_id)
+        if account is None:
+            raise NotFoundError("Connected social account not found")
+        try:
+            result = self._publisher(account.platform).verify(
+                job.external_post_id, access_token=account.access_token_ref
+            )
+            job.status = "verified"
+            job.verified_at = datetime.now(UTC)
+            job.payload = {**job.payload, "verification": result.raw_metadata}
+        except PublisherError as error:
+            job.status = "failed"
+            job.retryable = error.retryable
+            job.error_message = str(error)
+        self.session.commit()
+        return job

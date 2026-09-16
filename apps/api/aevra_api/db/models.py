@@ -443,3 +443,78 @@ class MediaAsset(TimestampMixin, Base):
     prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     asset_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class SocialAccount(TimestampMixin, Base):
+    __tablename__ = "social_accounts"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "platform", "external_account_id", name="uq_social_account_identity"
+        ),
+        CheckConstraint(
+            "platform IN ('linkedin', 'instagram', 'threads', 'x', 'facebook', 'youtube')",
+            name="valid_social_account_platform",
+        ),
+        CheckConstraint(
+            "status IN ('connected', 'paused', 'revoked')", name="valid_social_account_status"
+        ),
+        Index("ix_social_accounts_workspace_platform", "workspace_id", "platform"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    platform: Mapped[str] = mapped_column(String(16))
+    external_account_id: Mapped[str] = mapped_column(String(300))
+    display_name: Mapped[str] = mapped_column(String(200))
+    status: Mapped[str] = mapped_column(String(16), default="connected")
+    access_token_ref: Mapped[str] = mapped_column(String(512))
+    capabilities: Mapped[list[str]] = mapped_column(JSON, default=list)
+    account_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    last_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class PublishJob(TimestampMixin, Base):
+    __tablename__ = "publish_jobs"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["campaign_id", "workspace_id"],
+            ["campaigns.id", "campaigns.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("workspace_id", "idempotency_key", name="uq_publish_job_idempotency"),
+        CheckConstraint(
+            "status IN ('queued', 'publishing', 'published', 'verified', 'failed', 'cancelled')",
+            name="valid_publish_job_status",
+        ),
+        Index("ix_publish_jobs_workspace_created", "workspace_id", "created_at"),
+        Index("ix_publish_jobs_workspace_campaign", "workspace_id", "campaign_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    campaign_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    social_account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("social_accounts.id", ondelete="RESTRICT"), index=True
+    )
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    payload: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    external_post_id: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    external_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    retryable: Mapped[bool] = mapped_column(default=False)
+    error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
