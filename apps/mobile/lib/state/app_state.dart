@@ -1,0 +1,156 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import '../api/aevra_api_client.dart';
+import '../api/models.dart';
+
+/// Holds auth + workspace data for the whole app, mirroring the state
+/// LiveWorkspace (apps/web/components/live-workspace.tsx) keeps in React.
+/// Screens read from this via [MobileShell] instead of calling the API
+/// client directly.
+class AppState extends ChangeNotifier {
+  AppState({AevraApiClient? client}) : client = client ?? AevraApiClient();
+
+  final AevraApiClient client;
+  final _storage = const FlutterSecureStorage();
+  static const _tokenKey = 'aevra.mobile.access-token';
+
+  String? token;
+  bool hydrated = false;
+  bool loading = false;
+  String? error;
+
+  AevraUser? user;
+  Workspace? workspace;
+  List<Brand> brands = [];
+  List<Campaign> campaigns = [];
+  List<KnowledgeDocument> documents = [];
+  List<MediaAsset> assets = [];
+  List<SocialAccount> accounts = [];
+  List<ScheduledPost> scheduled = [];
+
+  bool get authenticated => token != null;
+
+  Future<void> hydrate() async {
+    token = await _storage.read(key: _tokenKey);
+    hydrated = true;
+    notifyListeners();
+    if (token != null) await load();
+  }
+
+  Future<void> login(String email, String password) async {
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final accessToken = await client.login(email, password);
+      await _storage.write(key: _tokenKey, value: accessToken);
+      token = accessToken;
+      await load();
+    } catch (caught) {
+      error = caught.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> register({
+    required String email,
+    required String password,
+    required String displayName,
+    required String organizationName,
+    required String workspaceName,
+    required String timezone,
+  }) async {
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final accessToken = await client.register(
+        email: email,
+        password: password,
+        displayName: displayName,
+        organizationName: organizationName,
+        workspaceName: workspaceName,
+        timezone: timezone,
+      );
+      await _storage.write(key: _tokenKey, value: accessToken);
+      token = accessToken;
+      await load();
+    } catch (caught) {
+      error = caught.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> load() async {
+    final currentToken = token;
+    if (currentToken == null) return;
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final me = await client.me(currentToken);
+      final workspaces = await client.workspaces(currentToken);
+      final nextWorkspace = workspaces.isNotEmpty ? workspaces.first : null;
+      if (nextWorkspace == null) throw Exception('No active workspace found.');
+
+      final results = await Future.wait([
+        client.brands(currentToken, nextWorkspace.id),
+        client.campaigns(currentToken, nextWorkspace.id),
+        client.documents(currentToken, nextWorkspace.id),
+        client.media(currentToken, nextWorkspace.id),
+        client.accounts(currentToken, nextWorkspace.id),
+        client.scheduled(currentToken, nextWorkspace.id),
+      ]);
+
+      user = me;
+      workspace = nextWorkspace;
+      brands = results[0] as List<Brand>;
+      campaigns = results[1] as List<Campaign>;
+      documents = results[2] as List<KnowledgeDocument>;
+      assets = results[3] as List<MediaAsset>;
+      accounts = results[4] as List<SocialAccount>;
+      scheduled = results[5] as List<ScheduledPost>;
+    } catch (caught) {
+      if (caught is ApiException && caught.status == 401) {
+        await signOut();
+      }
+      error = caught.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> decide(String campaignId, String decision) async {
+    final currentToken = token;
+    final currentWorkspace = workspace;
+    if (currentToken == null || currentWorkspace == null) return;
+    try {
+      final updated = await client.decideCampaign(currentToken, currentWorkspace.id, campaignId, decision);
+      campaigns = campaigns.map((c) => c.id == campaignId ? updated : c).toList();
+      notifyListeners();
+    } catch (caught) {
+      error = caught.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> signOut() async {
+    await _storage.delete(key: _tokenKey);
+    token = null;
+    user = null;
+    workspace = null;
+    brands = [];
+    campaigns = [];
+    documents = [];
+    assets = [];
+    accounts = [];
+    scheduled = [];
+    notifyListeners();
+  }
+}

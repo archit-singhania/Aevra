@@ -1,85 +1,91 @@
 import 'package:flutter/material.dart';
+import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
 import '../widgets/glass_card.dart';
 
 class ScheduleScreen extends StatelessWidget {
-  const ScheduleScreen({super.key});
+  const ScheduleScreen({super.key, required this.state});
 
-  static const _days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  static const _posts = [
-    (time: '09:30', title: 'Why developer tools fail quietly', meta: 'LinkedIn · Thought leadership', status: 'Review'),
-    (time: '14:00', title: 'Inside the toolkit', meta: 'Instagram · Carousel', status: 'Ready'),
-    (time: '17:30', title: 'Build faster, reason better', meta: 'YouTube · Short', status: 'Draft'),
-  ];
+  final AppState state;
+
+  String _formatTime(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '—';
+    final local = dt.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String _formatDay(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days[dt.weekday - 1];
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-      children: [
-        const Text('Schedule', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.02)),
-        const SizedBox(height: 4),
-        const Text('9 posts across 6 channels', style: TextStyle(fontSize: 12, color: AevraColors.muted2)),
-        const SizedBox(height: 18),
-        GlassCard(
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: List.generate(7, (i) {
-              final today = i == 0;
-              return Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: today ? AevraColors.lime.withOpacity(0.08) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(_days[i], style: const TextStyle(fontSize: 9, color: AevraColors.muted2)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${15 + i}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                          color: today ? AevraColors.lime : AevraColors.muted,
+    return AnimatedBuilder(
+      animation: state,
+      builder: (context, _) {
+        final scheduled = state.scheduled;
+        return RefreshIndicator(
+          onRefresh: state.load,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            children: [
+              const Text('Schedule', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.02)),
+              const SizedBox(height: 4),
+              Text('${scheduled.length} scheduled posts', style: const TextStyle(fontSize: 12, color: AevraColors.muted2)),
+              const SizedBox(height: 18),
+              if (state.loading && scheduled.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AevraColors.lime)),
+                )
+              else if (scheduled.isEmpty)
+                const Text(
+                  'No scheduled posts. Approved content can be scheduled from the web app.',
+                  style: TextStyle(fontSize: 12, color: AevraColors.muted2),
+                )
+              else
+                for (final p in scheduled) ...[
+                  GlassCard(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 52,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_formatTime(p.scheduledFor), style: const TextStyle(fontSize: 11, color: AevraColors.text)),
+                              Text(_formatDay(p.scheduledFor), style: const TextStyle(fontSize: 9, color: AevraColors.muted2)),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          child: Text(
+                            p.text?.isNotEmpty == true ? p.text! : 'Campaign post',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          p.status.replaceAll('_', ' '),
+                          style: const TextStyle(fontSize: 9, color: AevraColors.muted),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
+                  const SizedBox(height: 8),
+                ],
+            ],
           ),
-        ),
-        const SizedBox(height: 14),
-        for (final p in _posts) ...[
-          GlassCard(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 44,
-                  child: Text(p.time, style: const TextStyle(fontSize: 11, color: AevraColors.muted)),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(p.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 2),
-                      Text(p.meta, style: const TextStyle(fontSize: 9, color: AevraColors.muted2)),
-                    ],
-                  ),
-                ),
-                Text(p.status, style: const TextStyle(fontSize: 9, color: AevraColors.muted)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ],
+        );
+      },
     );
   }
 }

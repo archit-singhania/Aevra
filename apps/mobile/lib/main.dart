@@ -1,15 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/auth_screen.dart';
 import 'screens/campaigns_screen.dart';
 import 'screens/overview_screen.dart';
 import 'screens/schedule_screen.dart';
+import 'state/app_state.dart';
 import 'theme/aevra_theme.dart';
 import 'widgets/shader_background.dart';
 
 void main() => runApp(const AevraApp());
 
-class AevraApp extends StatelessWidget {
+class AevraApp extends StatefulWidget {
   const AevraApp({super.key});
+
+  @override
+  State<AevraApp> createState() => _AevraAppState();
+}
+
+class _AevraAppState extends State<AevraApp> {
+  late final AppState state;
+
+  @override
+  void initState() {
+    super.initState();
+    state = AppState();
+    state.hydrate();
+  }
+
+  @override
+  void dispose() {
+    state.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +40,42 @@ class AevraApp extends StatelessWidget {
       title: 'Aevra',
       debugShowCheckedModeBanner: false,
       theme: AevraTheme.dark,
-      home: const MobileShell(),
+      home: AnimatedBuilder(
+        animation: state,
+        builder: (context, _) {
+          if (!state.hydrated) {
+            return Scaffold(
+              backgroundColor: AevraColors.bg,
+              body: Stack(
+                children: [
+                  const Positioned.fill(child: RepaintBoundary(child: ShaderBackground())),
+                  const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AevraColors.lime),
+                  ),
+                ],
+              ),
+            );
+          }
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 320),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: state.authenticated
+                ? MobileShell(key: const ValueKey('shell'), state: state)
+                : AuthScreen(key: const ValueKey('auth'), state: state),
+          );
+        },
+      ),
     );
   }
 }
 
 class MobileShell extends StatefulWidget {
-  const MobileShell({super.key});
+  const MobileShell({super.key, required this.state});
+
+  final AppState state;
 
   @override
   State<MobileShell> createState() => _MobileShellState();
@@ -32,15 +84,15 @@ class MobileShell extends StatefulWidget {
 class _MobileShellState extends State<MobileShell> {
   int index = 0;
 
-  static const _pages = [
-    OverviewScreen(),
-    CampaignsScreen(),
-    ScheduleScreen(),
-    AnalyticsScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      OverviewScreen(state: widget.state),
+      CampaignsScreen(state: widget.state),
+      ScheduleScreen(state: widget.state),
+      AnalyticsScreen(state: widget.state),
+    ];
+
     return Scaffold(
       backgroundColor: AevraColors.bg,
       extendBodyBehindAppBar: true,
@@ -52,7 +104,7 @@ class _MobileShellState extends State<MobileShell> {
           SafeArea(
             child: Column(
               children: [
-                _TopBar(title: _titles[index]),
+                _TopBar(title: _titles[index], state: widget.state),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 260),
@@ -69,7 +121,7 @@ class _MobileShellState extends State<MobileShell> {
                         child: SlideTransition(position: slide, child: child),
                       );
                     },
-                    child: KeyedSubtree(key: ValueKey(index), child: _pages[index]),
+                    child: KeyedSubtree(key: ValueKey(index), child: pages[index]),
                   ),
                 ),
               ],
@@ -79,7 +131,10 @@ class _MobileShellState extends State<MobileShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
-        onDestinationSelected: (value) => setState(() => index = value),
+        onDestinationSelected: (value) {
+          HapticFeedback.selectionClick();
+          setState(() => index = value);
+        },
         backgroundColor: Colors.transparent,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.space_dashboard_outlined), label: 'Overview'),
@@ -96,9 +151,10 @@ class _MobileShellState extends State<MobileShell> {
 
 /// Custom glass top bar — the mobile equivalent of the web app's `.topbar`.
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title});
+  const _TopBar({required this.title, required this.state});
 
   final String title;
+  final AppState state;
 
   @override
   Widget build(BuildContext context) {
@@ -126,8 +182,13 @@ class _TopBar extends StatelessWidget {
           ),
           const Spacer(),
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_outlined, size: 20),
+            onPressed: () => state.load(),
+            icon: const Icon(Icons.refresh_outlined, size: 20),
+            color: AevraColors.muted,
+          ),
+          IconButton(
+            onPressed: () => state.signOut(),
+            icon: const Icon(Icons.logout_outlined, size: 20),
             color: AevraColors.muted,
           ),
         ],

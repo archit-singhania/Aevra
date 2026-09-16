@@ -21,7 +21,29 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import {
+  AiOrb,
+  CommandPalette,
+  DepthCard,
+  Onboarding,
+  ParticleField,
+  Reveal,
+  SoundToggle,
+  TypewriterText,
+  VoiceIndicator,
+} from "@/components/advanced-ui";
+import { GrainOverlay } from "@/components/background/grain-overlay";
+import { WebglBackground } from "@/components/background/webgl-background";
 import { Button } from "@/components/ui/button";
 import {
   api,
@@ -36,7 +58,22 @@ import {
   type User,
   type Workspace,
 } from "@/lib/api";
+import { overlayFade, variantSwap } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+
+// Cursor-follow glow — writes pointer position as CSS custom properties so
+// the glow itself stays CSS-driven (no re-renders on mouse move).
+function handleGlow(event: MouseEvent<HTMLElement>) {
+  const rect = event.currentTarget.getBoundingClientRect();
+  event.currentTarget.style.setProperty(
+    "--mx",
+    `${((event.clientX - rect.left) / rect.width) * 100}%`,
+  );
+  event.currentTarget.style.setProperty(
+    "--my",
+    `${((event.clientY - rect.top) / rect.height) * 100}%`,
+  );
+}
 
 type View = "overview" | "campaigns" | "brain" | "media" | "publishing";
 const tokenKey = "vae.staging.access-token";
@@ -142,8 +179,33 @@ export function LiveWorkspace() {
   const [publishAccount, setPublishAccount] = useState("");
   const [publishText, setPublishText] = useState("");
   const [scheduleAt, setScheduleAt] = useState("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [pulse, setPulse] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+  const [metricOrder, setMetricOrder] = useState(["sources", "campaigns", "approval", "assets"]);
+  const [dragMetric, setDragMetric] = useState<string | null>(null);
   const currentCampaign = campaigns.find((item) => item.id === selected);
   const currentVariant = variants.find((item) => item.status === "approved") ?? variants[0];
+  const playTone = useCallback(() => {
+    if (!soundEnabled || typeof window === "undefined") return;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = 660;
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.035, context.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.2);
+  }, [soundEnabled]);
   const reset = useCallback(() => {
     window.localStorage.removeItem(tokenKey);
     setToken(null);
@@ -223,6 +285,44 @@ export function LiveWorkspace() {
         .then(setVariants)
         .catch(() => setVariants([]));
   }, [token, workspace, selected]);
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("vae.theme");
+    const savedOrder = window.localStorage.getItem("vae.metric-order");
+    if (savedTheme === "light") setTheme("light");
+    if (savedOrder) {
+      try {
+        const parsed = JSON.parse(savedOrder) as string[];
+        if (parsed.length === 4) setMetricOrder(parsed);
+      } catch {
+        // Ignore stale local preferences.
+      }
+    }
+    setTourOpen(window.localStorage.getItem("vae.tour-complete") !== "1");
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+      if (event.key === "Escape") {
+        setPaletteOpen(false);
+        setTourOpen(false);
+      }
+    };
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("vae.theme", theme);
+  }, [theme]);
+  useEffect(() => {
+    window.localStorage.setItem("vae.metric-order", JSON.stringify(metricOrder));
+  }, [metricOrder]);
   const authenticate = async (event: FormEvent) => {
     event.preventDefault();
     setBusy("auth");
@@ -274,6 +374,8 @@ export function LiveWorkspace() {
       setPublishCampaign(campaign.id);
       setVariants(generated.variants);
       setNotice("Review-ready variants generated.");
+      setPulse((value) => value + 1);
+      playTone();
     });
   };
   const decide = async (decision: "approve" | "reject") => {
@@ -287,6 +389,8 @@ export function LiveWorkspace() {
       setNotice(
         decision === "approve" ? "Campaign approved for publishing." : "Changes requested.",
       );
+      setPulse((value) => value + 1);
+      playTone();
     });
   };
   const createBrand = async (event: FormEvent) => {
@@ -349,6 +453,8 @@ export function LiveWorkspace() {
       setAssets((items) => [...result.assets, ...items]);
       setMediaPrompt("");
       setNotice("Visual asset generated.");
+      setPulse((value) => value + 1);
+      playTone();
     });
   };
   const downloadAsset = async (asset: MediaAsset) => {
@@ -415,109 +521,126 @@ export function LiveWorkspace() {
   if (!hydrated)
     return (
       <main className="live-loading">
+        <WebglBackground />
+        <GrainOverlay />
         <RefreshCw size={18} /> Opening VAE…
       </main>
     );
   if (!token)
     return (
-      <main className="live-auth">
-        <section>
-          <div className="live-logo">
-            <span />
-            <b>VAE</b>
-          </div>
-          <p className="live-kicker">Campaign intelligence, grounded</p>
-          <h1>Make every campaign feel like your sharpest team member made it.</h1>
-          <p>
-            Turn approved brand knowledge into evidence-backed, human-approved content operations.
-          </p>
-          <div className="live-auth-points">
-            <span>
-              <Check size={15} /> Brand-grounded generation
-            </span>
-            <span>
-              <Check size={15} /> Reviewable evidence trail
-            </span>
-            <span>
-              <Check size={15} /> Staged publishing control
-            </span>
-          </div>
-        </section>
-        <form className="live-auth-card" onSubmit={authenticate}>
-          <div className="live-tabs">
-            <button
-              type="button"
-              className={cn(mode === "login" && "active")}
-              onClick={() => setMode("login")}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              className={cn(mode === "register" && "active")}
-              onClick={() => setMode("register")}
-            >
-              Create workspace
-            </button>
-          </div>
-          <h2>{mode === "login" ? "Welcome back" : "Start your VAE workspace"}</h2>
-          {error && (
-            <div className="live-alert error">
-              <CircleAlert size={15} /> {error}
+      <MotionConfig reducedMotion="user">
+        <main className="live-auth">
+          <WebglBackground />
+          <GrainOverlay />
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="live-logo">
+              <span />
+              <b>VAE</b>
             </div>
-          )}
-          {mode === "register" && (
-            <>
-              <Field label="Your name">
-                <input
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Jane Smith"
-                />
-              </Field>
-              <Field label="Organization">
-                <input
-                  required
-                  value={org}
-                  onChange={(e) => setOrg(e.target.value)}
-                  placeholder="VAE Studio"
-                />
-              </Field>
-              <Field label="Workspace">
-                <input
-                  required
-                  value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
-                  placeholder="Marketing"
-                />
-              </Field>
-            </>
-          )}
-          <Field label="Email">
-            <input
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-            />
-          </Field>
-          <Field label="Password">
-            <input
-              required
-              type="password"
-              minLength={mode === "register" ? 12 : 1}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Your password"
-            />
-          </Field>
-          <Button type="submit" className="live-full-button" disabled={busy === "auth"}>
-            <ArrowRight size={15} /> {mode === "login" ? "Enter workspace" : "Create workspace"}
-          </Button>
-        </form>
-      </main>
+            <p className="live-kicker">Campaign intelligence, grounded</p>
+            <h1>Make every campaign feel like your sharpest team member made it.</h1>
+            <p>
+              Turn approved brand knowledge into evidence-backed, human-approved content operations.
+            </p>
+            <div className="live-auth-points">
+              <span>
+                <Check size={15} /> Brand-grounded generation
+              </span>
+              <span>
+                <Check size={15} /> Reviewable evidence trail
+              </span>
+              <span>
+                <Check size={15} /> Staged publishing control
+              </span>
+            </div>
+          </motion.section>
+          <motion.form
+            className="live-auth-card"
+            onSubmit={authenticate}
+            onMouseMove={handleGlow}
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          >
+            <div className="live-tabs">
+              <button
+                type="button"
+                className={cn(mode === "login" && "active")}
+                onClick={() => setMode("login")}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                className={cn(mode === "register" && "active")}
+                onClick={() => setMode("register")}
+              >
+                Create workspace
+              </button>
+            </div>
+            <h2>{mode === "login" ? "Welcome back" : "Start your VAE workspace"}</h2>
+            {error && (
+              <div className="live-alert error">
+                <CircleAlert size={15} /> {error}
+              </div>
+            )}
+            {mode === "register" && (
+              <>
+                <Field label="Your name">
+                  <input
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Jane Smith"
+                  />
+                </Field>
+                <Field label="Organization">
+                  <input
+                    required
+                    value={org}
+                    onChange={(e) => setOrg(e.target.value)}
+                    placeholder="VAE Studio"
+                  />
+                </Field>
+                <Field label="Workspace">
+                  <input
+                    required
+                    value={workspaceName}
+                    onChange={(e) => setWorkspaceName(e.target.value)}
+                    placeholder="Marketing"
+                  />
+                </Field>
+              </>
+            )}
+            <Field label="Email">
+              <input
+                required
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@company.com"
+              />
+            </Field>
+            <Field label="Password">
+              <input
+                required
+                type="password"
+                minLength={mode === "register" ? 12 : 1}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Your password"
+              />
+            </Field>
+            <Button type="submit" className="live-full-button" disabled={busy === "auth"}>
+              <ArrowRight size={15} /> {mode === "login" ? "Enter workspace" : "Create workspace"}
+            </Button>
+          </motion.form>
+        </main>
+      </MotionConfig>
     );
   const nav = [
     { id: "overview" as View, label: "Overview", icon: BrainCircuit },
@@ -528,42 +651,70 @@ export function LiveWorkspace() {
   ];
   const overview = (
     <>
-      <div className="live-hero">
+      <Reveal className="live-hero live-glow" onMouseMove={handleGlow}>
+        <ParticleField pulse={pulse} />
         <div>
           <p className="live-kicker">Live staging workspace</p>
           <h1>Good to see you, {user?.display_name?.split(" ")[0] ?? "there"}.</h1>
-          <p>Your VAE control room is connected to the FastAPI workspace.</p>
+          <p>
+            <TypewriterText text="Your VAE control room is connected to the FastAPI workspace." />
+          </p>
         </div>
-        <span className="live-connected">
-          <i /> API connected
-        </span>
-      </div>
-      <div className="live-stats">
-        <article>
-          <BrainCircuit size={18} />
-          <small>Brand Brain</small>
-          <strong>{documents.length}</strong>
-          <span>indexed sources</span>
-        </article>
-        <article>
-          <Sparkles size={18} />
-          <small>Campaigns</small>
-          <strong>{campaigns.length}</strong>
-          <span>in workspace</span>
-        </article>
-        <article>
-          <ShieldCheck size={18} />
-          <small>Approval queue</small>
-          <strong>{campaigns.filter((item) => item.status === "awaiting_approval").length}</strong>
-          <span>human decisions</span>
-        </article>
-        <article>
-          <Image size={18} />
-          <small>Media assets</small>
-          <strong>{assets.length}</strong>
-          <span>generated assets</span>
-        </article>
-      </div>
+        <div className="live-hero-tools">
+          <AiOrb state={busy === "load" ? "thinking" : notice ? "success" : "idle"} />
+          <span className="live-connected">
+            <i /> API connected
+          </span>
+          <VoiceIndicator />
+        </div>
+      </Reveal>
+      <Reveal className="live-stats bento-grid">
+        {metricOrder.map((metric) => {
+          const metricData = {
+            sources: [BrainCircuit, "Brand Brain", documents.length, "indexed sources"],
+            campaigns: [Sparkles, "Campaigns", campaigns.length, "in workspace"],
+            approval: [
+              ShieldCheck,
+              "Approval queue",
+              campaigns.filter((item) => item.status === "awaiting_approval").length,
+              "human decisions",
+            ],
+            assets: [Image, "Media assets", assets.length, "generated assets"],
+          }[metric] ?? [Sparkles, "Signals", 0, "awaiting data"];
+          const Icon = metricData[0] as typeof BrainCircuit;
+          return (
+            <DepthCard
+              key={metric}
+              className="metric-card"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => {
+                if (!dragMetric || dragMetric === metric) return;
+                setMetricOrder((items) => {
+                  const next = [...items];
+                  const from = next.indexOf(dragMetric);
+                  const to = next.indexOf(metric);
+                  next.splice(from, 1);
+                  next.splice(to, 0, dragMetric);
+                  return next;
+                });
+                setDragMetric(null);
+              }}
+            >
+              <button
+                className="metric-drag-handle"
+                draggable
+                onDragStart={() => setDragMetric(metric)}
+                aria-label={`Reorder ${metric}`}
+              >
+                <Icon size={18} />
+              </button>
+              <small>{metricData[1] as string}</small>
+              <strong>{metricData[2] as number}</strong>
+              <span>{metricData[3] as string}</span>
+            </DepthCard>
+          );
+        })}
+      </Reveal>
       <section className="live-panel">
         <div className="live-panel-head">
           <div>
@@ -1037,101 +1188,182 @@ export function LiveWorkspace() {
           : view === "media"
             ? mediaView
             : publishingView;
+  const paletteItems = [
+    ...nav.map((item) => ({
+      label: `Open ${item.label}`,
+      hint: "View",
+      onSelect: () => setView(item.id),
+    })),
+    { label: "New campaign", hint: "Create", onSelect: () => setView("campaigns") },
+    {
+      label: theme === "dark" ? "Use light theme" : "Use dark theme",
+      hint: "Appearance",
+      onSelect: () => setTheme(theme === "dark" ? "light" : "dark"),
+    },
+    {
+      label: soundEnabled ? "Mute ambient sound" : "Enable ambient sound",
+      hint: "Audio",
+      onSelect: () => setSoundEnabled(!soundEnabled),
+    },
+  ];
   return (
-    <main className="live-app">
-      <aside className={cn("live-sidebar", sidebar && "open")}>
-        <div className="live-logo">
-          <span />
-          <b>VAE</b>
-          <button onClick={() => setSidebar(false)} aria-label="Close">
-            <X size={17} />
-          </button>
-        </div>
-        <div className="live-workspace">
-          <div>{initial(workspace?.name)}</div>
-          <span>
-            <b>{workspace?.name}</b>
-            <small>{workspace?.timezone}</small>
-          </span>
-        </div>
-        <nav>
-          {nav.map((item) => (
-            <button
-              className={cn(view === item.id && "active")}
-              key={item.id}
-              onClick={() => {
-                setView(item.id);
-                setSidebar(false);
-              }}
-            >
-              <item.icon size={17} />
-              <span>{item.label}</span>
+    <MotionConfig reducedMotion="user">
+      <main className="live-app">
+        <WebglBackground />
+        <GrainOverlay />
+        {paletteOpen && (
+          <CommandPalette items={paletteItems} onClose={() => setPaletteOpen(false)} />
+        )}
+        {tourOpen && (
+          <Onboarding
+            onDismiss={() => {
+              window.localStorage.setItem("vae.tour-complete", "1");
+              setTourOpen(false);
+            }}
+            onComplete={() => {
+              window.localStorage.setItem("vae.tour-complete", "1");
+              setTourOpen(false);
+            }}
+          />
+        )}
+        <aside className={cn("live-sidebar", sidebar && "open")}>
+          <div className="live-logo">
+            <span />
+            <b>VAE</b>
+            <button onClick={() => setSidebar(false)} aria-label="Close">
+              <X size={17} />
             </button>
-          ))}
-        </nav>
-        <div className="live-sidebar-foot">
-          <div className="live-user">
-            <div>{initial(user?.display_name)}</div>
+          </div>
+          <div className="live-workspace">
+            <div>{initial(workspace?.name)}</div>
             <span>
-              <b>{user?.display_name}</b>
-              <small>{user?.email}</small>
+              <b>{workspace?.name}</b>
+              <small>{workspace?.timezone}</small>
             </span>
           </div>
-          <button onClick={reset}>
-            <LogOut size={15} /> Sign out
-          </button>
-        </div>
-      </aside>
-      {sidebar && (
-        <button
-          className="live-backdrop"
-          onClick={() => setSidebar(false)}
-          aria-label="Close navigation"
-        />
-      )}
-      <section className="live-main">
-        <header className="live-topbar">
-          <button onClick={() => setSidebar(true)} aria-label="Open navigation">
-            <Menu size={19} />
-          </button>
-          <span>
-            <i /> Staging environment
-          </span>
-          <div>
-            <button className="live-refresh" onClick={() => token && void load(token)}>
-              <RefreshCw size={15} /> Refresh
+          <nav>
+            {nav.map((item) => (
+              <button
+                className={cn(view === item.id && "active")}
+                key={item.id}
+                onClick={() => {
+                  setView(item.id);
+                  setSidebar(false);
+                }}
+              >
+                <item.icon size={17} />
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="live-sidebar-foot">
+            <div className="live-user">
+              <div>{initial(user?.display_name)}</div>
+              <span>
+                <b>{user?.display_name}</b>
+                <small>{user?.email}</small>
+              </span>
+            </div>
+            <button onClick={reset}>
+              <LogOut size={15} /> Sign out
             </button>
-            <Button size="sm" onClick={() => setView("campaigns")}>
-              <Plus size={14} /> New campaign
-            </Button>
           </div>
-        </header>
-        <div className="live-content">
-          {notice && (
-            <div className="live-alert success">
-              <Check size={15} /> {notice}
-              <button onClick={() => setNotice(null)}>
-                <X size={14} />
+        </aside>
+        {sidebar && (
+          <button
+            className="live-backdrop"
+            onClick={() => setSidebar(false)}
+            aria-label="Close navigation"
+          />
+        )}
+        <section className="live-main" data-scrolled={scrolled}>
+          <header className="live-topbar">
+            <button onClick={() => setSidebar(true)} aria-label="Open navigation">
+              <Menu size={19} />
+            </button>
+            <span>
+              <i /> Staging environment
+            </span>
+            <div>
+              <button className="live-command-trigger" onClick={() => setPaletteOpen(true)}>
+                <Search size={14} /> <span>Search</span> <kbd>⌘K</kbd>
               </button>
-            </div>
-          )}
-          {error && (
-            <div className="live-alert error">
-              <CircleAlert size={15} /> {error}
-              <button onClick={() => setError(null)}>
-                <X size={14} />
+              <SoundToggle enabled={soundEnabled} onChange={setSoundEnabled} />
+              <button
+                className="live-theme-toggle"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                {theme === "dark" ? "Light" : "Dark"}
               </button>
+              <button className="live-refresh" onClick={() => token && void load(token)}>
+                <RefreshCw size={15} /> Refresh
+              </button>
+              <Button size="sm" onClick={() => setView("campaigns")}>
+                <Plus size={14} /> New campaign
+              </Button>
             </div>
-          )}
-          {busy === "load" ? (
-            <div className="live-loading">
-              <RefreshCw size={18} /> Syncing workspace…
-            </div>
-          ) : (
-            content
-          )}
-        </div>
-      </section>
-    </main>
+          </header>
+          <div
+            className="live-content"
+            style={{ "--glass-alpha": scrolled ? 0.82 : 0.62 } as CSSProperties}
+          >
+            <AnimatePresence>
+              {notice && (
+                <motion.div
+                  className="live-alert success"
+                  variants={overlayFade}
+                  initial="hidden"
+                  animate="show"
+                  exit="exit"
+                >
+                  <Check size={15} /> {notice}
+                  <button onClick={() => setNotice(null)}>
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              )}
+              {error && (
+                <motion.div
+                  className="live-alert error"
+                  variants={overlayFade}
+                  initial="hidden"
+                  animate="show"
+                  exit="exit"
+                >
+                  <CircleAlert size={15} /> {error}
+                  <button onClick={() => setError(null)}>
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {busy === "load" ? (
+              <div className="live-stats">
+                {[0, 1, 2, 3].map((i) => (
+                  <article key={i}>
+                    <div className="live-skeleton" style={{ width: 18, height: 18 }} />
+                    <div className="live-skeleton" style={{ width: "60%", height: 10 }} />
+                    <div className="live-skeleton" style={{ width: "40%", height: 26 }} />
+                    <div className="live-skeleton" style={{ width: "70%", height: 9 }} />
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={view}
+                  variants={variantSwap}
+                  initial="hidden"
+                  animate="show"
+                  exit="exit"
+                >
+                  {content}
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </div>
+        </section>
+      </main>
+    </MotionConfig>
   );
 }

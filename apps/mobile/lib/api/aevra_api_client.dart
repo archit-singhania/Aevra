@@ -1,0 +1,182 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import 'models.dart';
+
+/// Thrown on any non-2xx response. Mirrors ApiError in apps/web/lib/api.ts.
+class ApiException implements Exception {
+  final String message;
+  final int status;
+  ApiException(this.message, this.status);
+
+  @override
+  String toString() => message;
+}
+
+/// Mirrors apps/web/lib/api.ts — same base URL convention, same endpoints,
+/// same bearer-token auth. Point `baseUrl` at the same FastAPI workspace the
+/// web app talks to.
+///
+/// Defaults to the Android emulator's host-loopback address; override with
+/// `--dart-define=API_BASE_URL=http://localhost:8000/api/v1` for iOS
+/// simulator / desktop, or a real host for a device on the network.
+class AevraApiClient {
+  AevraApiClient({String? baseUrl})
+      : baseUrl = baseUrl ??
+            const String.fromEnvironment(
+              'API_BASE_URL',
+              defaultValue: 'http://10.0.2.2:8000/api/v1',
+            );
+
+  final String baseUrl;
+
+  Uri _uri(String path) => Uri.parse('$baseUrl${path.startsWith('/') ? path : '/$path'}');
+
+  Future<T> _request<T>(
+    String path, {
+    String method = 'GET',
+    String? token,
+    Object? body,
+    required T Function(dynamic json) parse,
+  }) async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null) headers['Authorization'] = 'Bearer $token';
+
+    final uri = _uri(path);
+    late http.Response response;
+    switch (method) {
+      case 'POST':
+        response = await http.post(uri, headers: headers, body: body != null ? jsonEncode(body) : null);
+        break;
+      default:
+        response = await http.get(uri, headers: headers);
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String message = 'The request could not be completed.';
+      try {
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final detail = payload['detail'];
+        if (detail is String) {
+          message = detail;
+        } else if (detail is List) {
+          message = detail.map((e) => (e as Map)['msg']).where((e) => e != null).join('. ');
+        } else if (payload['error'] is Map && payload['error']['message'] != null) {
+          message = payload['error']['message'] as String;
+        }
+      } catch (_) {
+        // Non-JSON error body — keep the default message.
+      }
+      throw ApiException(message, response.statusCode);
+    }
+
+    if (response.body.isEmpty) return parse(null);
+    return parse(jsonDecode(response.body));
+  }
+
+  Future<String> login(String email, String password) => _request<String>(
+        '/auth/login',
+        method: 'POST',
+        body: {'email': email, 'password': password},
+        parse: (json) => json['access_token'] as String,
+      );
+
+  Future<String> register({
+    required String email,
+    required String password,
+    required String displayName,
+    required String organizationName,
+    required String workspaceName,
+    required String timezone,
+  }) =>
+      _request<String>(
+        '/auth/register',
+        method: 'POST',
+        body: {
+          'email': email,
+          'password': password,
+          'display_name': displayName,
+          'organization_name': organizationName,
+          'workspace_name': workspaceName,
+          'timezone': timezone,
+        },
+        parse: (json) => json['token']['access_token'] as String,
+      );
+
+  Future<AevraUser> me(String token) => _request<AevraUser>(
+        '/auth/me',
+        token: token,
+        parse: (json) => AevraUser.fromJson(json as Map<String, dynamic>),
+      );
+
+  Future<List<Workspace>> workspaces(String token) => _request<List<Workspace>>(
+        '/workspaces',
+        token: token,
+        parse: (json) => (json as List).map((e) => Workspace.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  Future<List<Brand>> brands(String token, String workspaceId) => _request<List<Brand>>(
+        '/workspaces/$workspaceId/brands',
+        token: token,
+        parse: (json) => (json as List).map((e) => Brand.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  Future<List<Campaign>> campaigns(String token, String workspaceId) => _request<List<Campaign>>(
+        '/workspaces/$workspaceId/campaigns',
+        token: token,
+        parse: (json) => (json as List).map((e) => Campaign.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  Future<List<ContentVariant>> variants(String token, String workspaceId, String campaignId) =>
+      _request<List<ContentVariant>>(
+        '/workspaces/$workspaceId/campaigns/$campaignId/variants',
+        token: token,
+        parse: (json) =>
+            (json as List).map((e) => ContentVariant.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  Future<Campaign> decideCampaign(
+    String token,
+    String workspaceId,
+    String campaignId,
+    String decision,
+  ) =>
+      _request<Campaign>(
+        '/workspaces/$workspaceId/campaigns/$campaignId/decision',
+        method: 'POST',
+        token: token,
+        body: {'decision': decision, 'feedback': null},
+        parse: (json) => Campaign.fromJson((json as Map<String, dynamic>)['campaign'] as Map<String, dynamic>),
+      );
+
+  Future<List<KnowledgeDocument>> documents(String token, String workspaceId) =>
+      _request<List<KnowledgeDocument>>(
+        '/workspaces/$workspaceId/knowledge/documents',
+        token: token,
+        parse: (json) =>
+            (json as List).map((e) => KnowledgeDocument.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  Future<List<MediaAsset>> media(String token, String workspaceId) => _request<List<MediaAsset>>(
+        '/workspaces/$workspaceId/media/assets',
+        token: token,
+        parse: (json) => (json as List).map((e) => MediaAsset.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  Future<List<SocialAccount>> accounts(String token, String workspaceId) =>
+      _request<List<SocialAccount>>(
+        '/workspaces/$workspaceId/publishing/accounts',
+        token: token,
+        parse: (json) =>
+            (json as List).map((e) => SocialAccount.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+
+  Future<List<ScheduledPost>> scheduled(String token, String workspaceId) =>
+      _request<List<ScheduledPost>>(
+        '/workspaces/$workspaceId/operations/schedule',
+        token: token,
+        parse: (json) =>
+            (json as List).map((e) => ScheduledPost.fromJson(e as Map<String, dynamic>)).toList(),
+      );
+}
