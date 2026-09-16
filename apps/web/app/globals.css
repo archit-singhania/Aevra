@@ -2787,3 +2787,29 @@ body {
     padding: 8px 10px;
   }
 }
+
+/* Keep the hero wide even when browser zoom or a narrow desktop viewport
+   crosses the legacy mobile breakpoint. The control cluster may wrap, but
+   the greeting must never collapse into a one-word column. */
+.live-hero {
+  display: flex !important;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.live-hero > div:first-of-type {
+  flex: 1 1 420px;
+  min-width: min(420px, 100%);
+}
+.live-hero-tools {
+  flex: 0 1 auto;
+}
+@media (max-width: 560px) {
+  .live-hero {
+    align-items: flex-start;
+  }
+  .live-hero > div:first-of-type {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+}
