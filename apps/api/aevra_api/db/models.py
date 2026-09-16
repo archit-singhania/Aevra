@@ -379,3 +379,67 @@ class ContentVariant(TimestampMixin, Base):
     citations: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
     generated_by_model: Mapped[str] = mapped_column(String(160))
     generation_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class MediaAsset(TimestampMixin, Base):
+    """Tenant-scoped generated media and its platform derivatives."""
+
+    __tablename__ = "media_assets"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["campaign_id", "workspace_id"],
+            ["campaigns.id", "campaigns.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("id", "workspace_id", name="uq_media_assets_id_workspace"),
+        CheckConstraint("media_type IN ('image', 'video')", name="valid_media_asset_type"),
+        CheckConstraint(
+            "asset_role IN ('source', 'generated', 'variant', 'composition')",
+            name="valid_media_asset_role",
+        ),
+        CheckConstraint(
+            "status IN ('processing', 'ready', 'failed')", name="valid_media_asset_status"
+        ),
+        CheckConstraint(
+            "platform IS NULL OR platform IN ("
+            "'linkedin', 'instagram', 'threads', 'x', 'facebook', 'youtube')",
+            name="valid_media_asset_platform",
+        ),
+        CheckConstraint("bytes_size >= 0", name="valid_media_asset_bytes"),
+        CheckConstraint("width IS NULL OR width > 0", name="valid_media_asset_width"),
+        CheckConstraint("height IS NULL OR height > 0", name="valid_media_asset_height"),
+        CheckConstraint(
+            "duration_seconds IS NULL OR duration_seconds >= 0",
+            name="valid_media_asset_duration",
+        ),
+        Index("ix_media_assets_workspace_created", "workspace_id", "created_at"),
+        Index("ix_media_assets_workspace_campaign", "workspace_id", "campaign_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    campaign_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    parent_asset_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    media_type: Mapped[str] = mapped_column(String(16))
+    asset_role: Mapped[str] = mapped_column(String(16), default="generated")
+    platform: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="processing")
+    storage_key: Mapped[str] = mapped_column(String(512), unique=True)
+    filename: Mapped[str] = mapped_column(String(255))
+    mime_type: Mapped[str] = mapped_column(String(120))
+    bytes_size: Mapped[int] = mapped_column(Integer, default=0)
+    sha256: Mapped[str] = mapped_column(String(64))
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    generation_provider: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    asset_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)

@@ -6,6 +6,7 @@ from aevra_api.api.routes.auth import router as auth_router
 from aevra_api.api.routes.brands import router as brands_router
 from aevra_api.api.routes.campaigns import router as campaigns_router
 from aevra_api.api.routes.knowledge import router as knowledge_router
+from aevra_api.api.routes.media import router as media_router
 from aevra_api.api.routes.models import router as models_router
 from aevra_api.api.routes.workspaces import router as workspaces_router
 from aevra_api.domain.errors import (
@@ -37,6 +38,7 @@ app.include_router(brands_router, prefix="/api/v1")
 app.include_router(knowledge_router, prefix="/api/v1")
 app.include_router(models_router, prefix="/api/v1")
 app.include_router(campaigns_router, prefix="/api/v1")
+app.include_router(media_router, prefix="/api/v1")
 
 
 def error_response(code: str, message: str, status_code: int) -> JSONResponse:
@@ -89,4 +91,4 @@ def handle_generation_error(_request: Request, exc: GenerationError) -> JSONResp
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="aevra-api", phase=6)
+    return HealthResponse(status="ok", service="aevra-api", phase=8)

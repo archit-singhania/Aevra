@@ -2,10 +2,11 @@
 
 Aevra is a self-hostable agentic content intelligence and publishing platform. It grounds campaign work in a workspace-specific Brand Brain, creates platform-native variants, routes them through approval, and hands approved actions to deterministic publishing workers.
 
-> Current milestone: **Phases 0–6 complete.** Aevra now includes authenticated tenant
+> Current milestone: **Phases 0–8 complete.** Aevra now includes authenticated tenant
 > boundaries, a cited Brand Brain, local Qwen/Ollama providers, durable campaign state,
 > LangGraph orchestration, platform-native content variants, quality validation, revision
-> history, and a human approval boundary.
+> history, a human approval boundary, deterministic branded image variants, and safe
+> FFmpeg video compositions.
 
 ## Quick start
 
@@ -75,6 +76,16 @@ download. Docker reads Ollama on `host.docker.internal:11434` from `.env`.
   rejects the current immutable revision.
 - `GET /api/v1/workspaces/{workspace_id}/campaigns/{campaign_id}/variants` returns complete
   platform and revision history with citations and quality findings.
+
+## Phase 7–8 media API
+
+- `POST /api/v1/workspaces/{workspace_id}/media/images/generate` creates a deterministic,
+  auditable source image plus tenant-scoped platform crops with optional brand treatment.
+- `POST /api/v1/workspaces/{workspace_id}/media/videos/compose` renders 9:16, 1:1, and
+  16:9 campaign videos from approved image assets. FFmpeg is used when available; the
+  deterministic manifest mode keeps local previews and CI reproducible.
+- `GET /api/v1/workspaces/{workspace_id}/media/assets` lists scoped media assets and
+  `GET .../assets/{asset_id}/download` streams an authorized artifact.
 
 ## Quality checks
 

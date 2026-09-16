@@ -1,6 +1,9 @@
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
 COPY apps/api/pyproject.toml ./pyproject.toml
 COPY apps/api/aevra_api ./aevra_api
 COPY alembic.ini ./alembic.ini

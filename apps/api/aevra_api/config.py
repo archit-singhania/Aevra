@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:8b"
     ollama_timeout_seconds: float = Field(default=120.0, ge=1, le=600)
+    media_root: str = "./media"
+    image_provider: str = "deterministic"
+    flux_base_url: str = "http://localhost:8188"
+    flux_timeout_seconds: float = Field(default=120.0, ge=1, le=600)
+    video_provider: str = "ffmpeg"
+    ffmpeg_binary: str = "ffmpeg"
+    ffprobe_binary: str = "ffprobe"
+    video_default_seconds: float = Field(default=6.0, ge=0.5, le=60)
+    video_max_seconds: float = Field(default=60.0, ge=0.5, le=300)
+    video_fps: int = Field(default=30, ge=1, le=60)
 
     @model_validator(mode="after")
     def reject_development_secret_in_production(self) -> "Settings":
