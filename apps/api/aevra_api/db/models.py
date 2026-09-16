@@ -518,3 +518,87 @@ class PublishJob(TimestampMixin, Base):
     error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ScheduledPost(TimestampMixin, Base):
+    __tablename__ = "scheduled_posts"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["campaign_id", "workspace_id"],
+            ["campaigns.id", "campaigns.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("workspace_id", "idempotency_key", name="uq_scheduled_post_idempotency"),
+        CheckConstraint(
+            "status IN ('scheduled', 'processing', 'published', 'failed', 'cancelled')",
+            name="valid_scheduled_post_status",
+        ),
+        Index("ix_scheduled_posts_workspace_due", "workspace_id", "scheduled_for", "status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    campaign_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    social_account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("social_accounts.id", ondelete="RESTRICT"), index=True
+    )
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(160))
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="scheduled")
+    payload: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    published_job_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
+
+
+class PostMetric(TimestampMixin, Base):
+    __tablename__ = "post_metrics"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "external_post_id", "collected_at", name="uq_post_metric_snapshot"),
+        CheckConstraint("impressions >= 0", name="valid_metric_impressions"),
+        CheckConstraint("engagements >= 0", name="valid_metric_engagements"),
+        Index("ix_post_metrics_workspace_collected", "workspace_id", "collected_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    social_account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("social_accounts.id", ondelete="RESTRICT"), index=True
+    )
+    external_post_id: Mapped[str] = mapped_column(String(300), index=True)
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    impressions: Mapped[int] = mapped_column(Integer, default=0)
+    engagements: Mapped[int] = mapped_column(Integer, default=0)
+    clicks: Mapped[int] = mapped_column(Integer, default=0)
+    likes: Mapped[int] = mapped_column(Integer, default=0)
+    comments: Mapped[int] = mapped_column(Integer, default=0)
+    shares: Mapped[int] = mapped_column(Integer, default=0)
+    metric_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class AuditLog(TimestampMixin, Base):
+    __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index("ix_audit_logs_workspace_created", "workspace_id", "created_at"),
+        Index("ix_audit_logs_workspace_action", "workspace_id", "action"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    action: Mapped[str] = mapped_column(String(100))
+    resource_type: Mapped[str] = mapped_column(String(80))
+    resource_id: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    details: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)

@@ -2,11 +2,12 @@
 
 Aevra is a self-hostable agentic content intelligence and publishing platform. It grounds campaign work in a workspace-specific Brand Brain, creates platform-native variants, routes them through approval, and hands approved actions to deterministic publishing workers.
 
-> Current milestone: **Phases 0–10 complete.** Aevra now includes authenticated tenant
+> Current milestone: **Phases 0–12 complete.** Aevra now includes authenticated tenant
 > boundaries, a cited Brand Brain, local Qwen/Ollama providers, durable campaign state,
 > LangGraph orchestration, platform-native content variants, quality validation, revision
 > history, a human approval boundary, deterministic branded image variants, safe FFmpeg
-> video compositions, idempotent publishing jobs, and a LinkedIn REST connector boundary.
+> video compositions, idempotent publishing jobs, multi-platform connector boundaries,
+> scheduling, metrics capture, audit logs, and a stable mobile API contract.
 
 ## Quick start
 
@@ -96,6 +97,16 @@ download. Docker reads Ollama on `host.docker.internal:11434` from `.env`.
   their connector phases are delivered.
 - `POST /api/v1/workspaces/{workspace_id}/publishing/jobs/{job_id}/verify` verifies the
   external post and records the result.
+
+## Phase 11–12 operations API
+
+- The remaining platform adapters share the same safe REST publisher contract for Instagram,
+  Facebook, Threads, X, and YouTube.
+- `POST /api/v1/workspaces/{workspace_id}/operations/schedule` creates an idempotent,
+  tenant-scoped scheduled post.
+- `GET /api/v1/workspaces/{workspace_id}/operations/metrics` returns captured performance
+  snapshots, while `POST .../metrics` records normalized impressions and engagement metrics.
+- `GET /api/v1/workspaces/{workspace_id}/operations/audit` exposes a tenant-scoped audit trail.
 
 ## Quality checks
 

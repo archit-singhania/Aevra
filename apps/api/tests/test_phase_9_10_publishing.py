@@ -1,10 +1,15 @@
 import httpx
 
 from aevra_api.publishing.contracts import (
+    FacebookPublisher,
+    InstagramPublisher,
     LinkedInPublisher,
     MockSocialPublisher,
     PublishRequest,
     PublishStatus,
+    ThreadsPublisher,
+    XPublisher,
+    YouTubePublisher,
 )
 
 
@@ -50,3 +55,31 @@ def test_linkedin_rate_limit_is_retryable() -> None:
         assert error.retryable is True
     else:
         raise AssertionError("rate limiting must fail with a retryable publisher error")
+
+
+def test_phase_11_platform_adapters_share_safe_contract() -> None:
+    adapter_types = [
+        InstagramPublisher,
+        FacebookPublisher,
+        ThreadsPublisher,
+        XPublisher,
+        YouTubePublisher,
+    ]
+    for adapter_type in adapter_types:
+        publisher = adapter_type(
+            base_url="https://sandbox.example",
+            client=httpx.Client(
+                transport=httpx.MockTransport(
+                    lambda request: httpx.Response(
+                        200,
+                        json={"id": "post-1", "url": str(request.url)},
+                    )
+                )
+            ),
+        )
+        result = publisher.publish(
+            PublishRequest("platform-key-123", "account-1", "Cross-platform post"),
+            access_token="opaque-token",
+        )
+        assert result.provider == adapter_type.platform
+        assert result.external_post_id == "post-1"

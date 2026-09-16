@@ -174,3 +174,93 @@ class LinkedInPublisher:
             self.platform,
             {"verified": True, "http_status": response.status_code},
         )
+
+
+class PlatformRestPublisher:
+    """Common REST boundary used by the remaining platform adapters."""
+
+    platform = "platform"
+
+    def __init__(self, *, base_url: str, client: httpx.Client | None = None) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.client = client or httpx.Client(timeout=30.0)
+
+    def publish(self, request: PublishRequest, *, access_token: str) -> PublishResult:
+        try:
+            response = self.client.post(
+                f"{self.base_url}/v1/{self.platform}/publish",
+                headers={"Authorization": f"Bearer {access_token}"},
+                json={
+                    "account_id": request.account_id,
+                    "text": request.text,
+                    "media_urls": list(request.media_urls),
+                    "idempotency_key": request.idempotency_key,
+                },
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError(f"{self.platform} transport failed", retryable=True) from error
+        if response.status_code in {401, 403}:
+            raise PublisherError(f"{self.platform} authorization was rejected")
+        if response.status_code == 429 or response.status_code >= 500:
+            raise PublisherError(f"{self.platform} is temporarily unavailable", retryable=True)
+        if response.status_code >= 400:
+            raise PublisherError(f"{self.platform} rejected the post")
+        body = response.json()
+        external_id = response.headers.get("x-post-id") or body.get("id")
+        if not external_id:
+            raise PublisherError(f"{self.platform} returned no post identifier", retryable=True)
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            str(external_id),
+            body.get("url"),
+            datetime.now(UTC),
+            self.platform,
+            {"http_status": response.status_code},
+        )
+
+    def verify(self, external_post_id: str, *, access_token: str) -> PublishResult:
+        try:
+            response = self.client.get(
+                f"{self.base_url}/v1/{self.platform}/posts/{external_post_id}",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError(
+                f"{self.platform} verification transport failed", retryable=True
+            ) from error
+        if response.status_code == 404:
+            raise PublisherError(f"{self.platform} post was not found")
+        if response.status_code >= 500:
+            raise PublisherError(
+                f"{self.platform} verification is temporarily unavailable", retryable=True
+            )
+        if response.status_code >= 400:
+            raise PublisherError(f"{self.platform} verification was rejected")
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            external_post_id,
+            response.json().get("url"),
+            datetime.now(UTC),
+            self.platform,
+            {"verified": True, "http_status": response.status_code},
+        )
+
+
+class InstagramPublisher(PlatformRestPublisher):
+    platform = "instagram"
+
+
+class FacebookPublisher(PlatformRestPublisher):
+    platform = "facebook"
+
+
+class ThreadsPublisher(PlatformRestPublisher):
+    platform = "threads"
+
+
+class XPublisher(PlatformRestPublisher):
+    platform = "x"
+
+
+class YouTubePublisher(PlatformRestPublisher):
+    platform = "youtube"

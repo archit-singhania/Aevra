@@ -8,7 +8,16 @@ from sqlalchemy.orm import Session
 from aevra_api.config import Settings
 from aevra_api.db.models import PublishJob, SocialAccount
 from aevra_api.domain.errors import ConflictError, ForbiddenError, NotFoundError
-from aevra_api.publishing.contracts import LinkedInPublisher, MockSocialPublisher, PublisherError
+from aevra_api.publishing.contracts import (
+    FacebookPublisher,
+    InstagramPublisher,
+    LinkedInPublisher,
+    MockSocialPublisher,
+    PublisherError,
+    ThreadsPublisher,
+    XPublisher,
+    YouTubePublisher,
+)
 from aevra_api.publishing.contracts import PublishRequest as ProviderRequest
 from aevra_api.repositories.publishing import PublishingRepository
 from aevra_api.repositories.tenancy import TenancyRepository
@@ -70,7 +79,17 @@ class PublishingService:
     def _publisher(self, platform: str):
         if platform == "linkedin":
             return LinkedInPublisher()
-        return self.mock
+        publishers = {
+            "instagram": InstagramPublisher,
+            "facebook": FacebookPublisher,
+            "threads": ThreadsPublisher,
+            "x": XPublisher,
+            "youtube": YouTubePublisher,
+        }
+        publisher_type = publishers.get(platform)
+        if publisher_type is None:
+            return self.mock
+        return publisher_type(base_url=f"https://api.{platform}.com")
 
     def publish(
         self, user_id: uuid.UUID, workspace_id: uuid.UUID, request: PublishRequest
