@@ -9,5 +9,7 @@ COPY apps/api/aevra_api ./aevra_api
 RUN pip install --no-cache-dir .
 COPY alembic.ini ./alembic.ini
 COPY infrastructure/migrations ./infrastructure/migrations
-EXPOSE 8000
-CMD ["uvicorn", "aevra_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY infrastructure/docker/api-start.sh ./api-start.sh
+RUN chmod +x ./api-start.sh
+EXPOSE 10000
+CMD ["/app/api-start.sh"]

@@ -1,6 +1,6 @@
 from logging.config import fileConfig
 
-from aevra_api.config import get_settings
+from aevra_api.config import get_settings, normalize_database_url
 from aevra_api.db import models  # noqa: F401
 from aevra_api.db.base import Base
 from alembic import context
@@ -10,7 +10,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+config.set_main_option("sqlalchemy.url", normalize_database_url(get_settings().database_url))
 target_metadata = Base.metadata
 
 

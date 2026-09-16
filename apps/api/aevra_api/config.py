@@ -6,6 +6,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 DEFAULT_SECRET = "development-only-change-before-deploy"
 
 
+def normalize_database_url(database_url: str) -> str:
+    """Use the psycopg 3 driver for common managed-Postgres URL formats."""
+    for prefix in ("postgres://", "postgresql://", "postgresql+psycopg2://"):
+        if database_url.startswith(prefix):
+            return f"postgresql+psycopg://{database_url[len(prefix):]}"
+    return database_url
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="AEVRA_", extra="ignore")
 

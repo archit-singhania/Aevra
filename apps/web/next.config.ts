@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const apiOrigin =
@@ -7,6 +8,8 @@ const apiOrigin =
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: process.env.AEVRA_STANDALONE === "1" ? "standalone" : undefined,
+  // Keep tracing inside this monorepo when a parent workspace also contains a lockfile.
+  outputFileTracingRoot: path.join(process.cwd(), ".."),
   poweredByHeader: false,
   async rewrites() {
     return [

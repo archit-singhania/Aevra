@@ -3,10 +3,11 @@ from collections.abc import Generator
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from aevra_api.config import get_settings
+from aevra_api.config import get_settings, normalize_database_url
 
 
 def build_engine(database_url: str) -> Engine:
+    database_url = normalize_database_url(database_url)
     connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
     return create_engine(database_url, pool_pre_ping=True, connect_args=connect_args)
 
