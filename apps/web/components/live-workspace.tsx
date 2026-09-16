@@ -182,6 +182,7 @@ export function LiveWorkspace() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [themeWipe, setThemeWipe] = useState<"dark" | "light" | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [pulse, setPulse] = useState(0);
   const [scrolled, setScrolled] = useState(false);
@@ -206,6 +207,12 @@ export function LiveWorkspace() {
     oscillator.start();
     oscillator.stop(context.currentTime + 0.2);
   }, [soundEnabled]);
+  const toggleTheme = useCallback(() => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    setThemeWipe(next);
+    window.setTimeout(() => setThemeWipe(null), 760);
+  }, [theme]);
   const reset = useCallback(() => {
     window.localStorage.removeItem(tokenKey);
     setToken(null);
@@ -1198,7 +1205,7 @@ export function LiveWorkspace() {
     {
       label: theme === "dark" ? "Use light theme" : "Use dark theme",
       hint: "Appearance",
-      onSelect: () => setTheme(theme === "dark" ? "light" : "dark"),
+      onSelect: toggleTheme,
     },
     {
       label: soundEnabled ? "Mute ambient sound" : "Enable ambient sound",
@@ -1211,6 +1218,7 @@ export function LiveWorkspace() {
       <main className="live-app">
         <WebglBackground />
         <GrainOverlay />
+        {themeWipe && <div className={`theme-wipe ${themeWipe}`} aria-hidden="true" />}
         {paletteOpen && (
           <CommandPalette items={paletteItems} onClose={() => setPaletteOpen(false)} />
         )}
@@ -1289,10 +1297,7 @@ export function LiveWorkspace() {
                 <Search size={14} /> <span>Search</span> <kbd>⌘K</kbd>
               </button>
               <SoundToggle enabled={soundEnabled} onChange={setSoundEnabled} />
-              <button
-                className="live-theme-toggle"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              >
+              <button className="live-theme-toggle" onClick={toggleTheme}>
                 {theme === "dark" ? "Light" : "Dark"}
               </button>
               <button className="live-refresh" onClick={() => token && void load(token)}>
