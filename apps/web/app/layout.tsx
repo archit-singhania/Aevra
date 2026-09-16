@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Aevra — Campaign Intelligence",
+  title: "VAE — Campaign Intelligence",
   description: "Plan, generate, approve, and orchestrate brand-grounded campaigns.",
   icons: { icon: "/favicon.svg" },
 };

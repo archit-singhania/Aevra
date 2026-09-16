@@ -18,7 +18,7 @@ pnpm install
 pnpm dev:web
 ```
 
-Open `http://localhost:3000`.
+The direct Next.js development server runs on `http://localhost:3000`.
 
 ### Local infrastructure
 
@@ -27,7 +27,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The web app runs on `http://localhost:3000`; the API health endpoint is `http://localhost:8000/health`.
+The web app runs on `http://localhost:3001` by default; the API health endpoint is `http://localhost:8000/health`.
 
 Initialize the development data once the stack is healthy:
 

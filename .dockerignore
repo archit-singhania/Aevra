@@ -1,0 +1,22 @@
+# Keep host-specific dependencies and build output out of Linux containers.
+node_modules
+**/node_modules
+.next
+**/.next
+pnpm-store
+.pnpm-store
+.venv
+**/.venv
+__pycache__
+**/__pycache__
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.git
+.gitignore
+/media
+*.pyc
+*.pyo
+*.log
+.env.local
+**/.env.local

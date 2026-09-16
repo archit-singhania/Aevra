@@ -1,4 +1,4 @@
-export const PRODUCT_NAME = "Aevra" as const;
+export const PRODUCT_NAME = "VAE" as const;
 export const API_VERSION = "v1" as const;
 
 export const APPROVAL_MODES = ["MANUAL", "ASSISTED", "AUTONOMOUS"] as const;
@@ -25,4 +25,3 @@ export const CAMPAIGN_STATES = [
 ] as const;
 
 export type CampaignState = (typeof CAMPAIGN_STATES)[number];
-

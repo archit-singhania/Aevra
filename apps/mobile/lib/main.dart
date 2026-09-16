@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-void main() => runApp(const AevraApp());
+void main() => runApp(const VaeApp());
 
-class AevraApp extends StatelessWidget {
-  const AevraApp({super.key});
+class VaeApp extends StatelessWidget {
+  const VaeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Aevra',
+      title: 'VAE',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -39,7 +39,7 @@ class _MobileShellState extends State<MobileShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Aevra')),
+      appBar: AppBar(title: const Text('VAE')),
       body: pages[index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,

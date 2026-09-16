@@ -61,22 +61,22 @@ const reviewVariants = [
     platform: "LinkedIn",
     tone: "linkedin-bg",
     score: 96,
-    copy: "Developer tools should not ask teams to choose between speed and evidence. Aevra Studio keeps campaign decisions grounded in the knowledge your organization has already verified.",
-    hashtags: ["#Aevra", "#AgenticAI", "#DeveloperTools"],
+    copy: "Developer tools should not ask teams to choose between speed and evidence. VAE Studio keeps campaign decisions grounded in the knowledge your organization has already verified.",
+    hashtags: ["#VAE", "#AgenticAI", "#DeveloperTools"],
   },
   {
     platform: "Instagram",
     tone: "instagram-bg",
     score: 93,
     copy: "Your brand knowledge, transformed into platform-native stories — with evidence attached and approval built in.",
-    hashtags: ["#Aevra", "#BrandIntelligence", "#ContentOps"],
+    hashtags: ["#VAE", "#BrandIntelligence", "#ContentOps"],
   },
   {
     platform: "YouTube",
     tone: "youtube-bg",
     score: 94,
-    copy: "See how Aevra Studio turns a verified product brief into a grounded, review-ready campaign for every channel.",
-    hashtags: ["#Aevra", "#RAG", "#MarketingAI"],
+    copy: "See how VAE Studio turns a verified product brief into a grounded, review-ready campaign for every channel.",
+    hashtags: ["#VAE", "#RAG", "#MarketingAI"],
   },
 ];
 
@@ -121,7 +121,7 @@ export function AevraWorkspace() {
           <div className="brand-mark" aria-hidden="true">
             <span />
           </div>
-          <span className="brand-name">AEVRA</span>
+          <span className="brand-name">VAE</span>
           <button
             type="button"
             className="icon-button sidebar-dismiss"
@@ -242,7 +242,7 @@ export function AevraWorkspace() {
               </p>
               <h1>Your brand, in motion.</h1>
               <p>
-                Shape the next campaign. Aevra keeps every idea grounded, adapted, and ready for
+                Shape the next campaign. VAE keeps every idea grounded, adapted, and ready for
                 approval.
               </p>
             </div>
@@ -258,7 +258,7 @@ export function AevraWorkspace() {
               <WandSparkles size={17} />
               <span>Campaign composer</span>
               <div className="model-pill">
-                Aevra local <span>·</span> Qwen
+                VAE local <span>·</span> Qwen
               </div>
             </div>
             <textarea

@@ -7,7 +7,6 @@ services:
       POSTGRES_DB: aevra
       POSTGRES_USER: aevra
       POSTGRES_PASSWORD: aevra
-    ports: ["5432:5432"]
     volumes: ["postgres_data:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U aevra -d aevra"]
@@ -18,7 +17,6 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
-    ports: ["6379:6379"]
     volumes: ["redis_data:/data"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -28,11 +26,14 @@ services:
 
   minio:
     image: minio/minio:latest
+    # Optional storage profile. The default development/staging path uses local media storage;
+    # MinIO's public Docker image is not currently pullable from Docker Hub.
+    profiles: ["storage"]
     command: server /data --console-address :9001
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-aevra}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-aevra-development-only}
-    ports: ["9000:9000", "9001:9001"]
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     volumes: ["minio_data:/data"]
 
   migrate:
@@ -59,7 +60,7 @@ services:
       context: .
       dockerfile: infrastructure/docker/api.Dockerfile
     env_file: [.env]
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]
     depends_on:
       migrate: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
@@ -75,7 +76,9 @@ services:
       dockerfile: infrastructure/docker/web.Dockerfile
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
-    ports: ["3000:3000"]
+    # Port 3000 is frequently occupied by another local development server.
+    # Override AEVRA_WEB_PORT when you want a different host port.
+    ports: ["127.0.0.1:${AEVRA_WEB_PORT:-3001}:3000"]
     depends_on:
       api: { condition: service_healthy }
 
