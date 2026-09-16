@@ -24,3 +24,7 @@ class UnsupportedContentError(DomainError):
 
 class ProviderUnavailableError(DomainError):
     pass
+
+
+class GenerationError(DomainError):
+    pass

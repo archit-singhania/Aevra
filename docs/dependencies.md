@@ -18,10 +18,12 @@
   HTML, Markdown, and text-bearing PDFs.
 - **HTTPX:** replaceable Ollama embedding and chat transports with bounded timeouts.
 - **python-multipart:** streamed FastAPI file-upload parsing.
+- **LangGraph:** typed campaign graph execution. Aevra persists application checkpoints in
+  its own tenant-scoped run/step tables so authorization and audit history remain explicit.
 
 ## Deferred intentionally
 
-LangChain, LangGraph, Celery, FFmpeg bindings, image-generation runtimes,
+Celery, FFmpeg bindings, image-generation runtimes,
 OpenTelemetry, and social SDKs are introduced in the first phase that uses them. The Phase
 4 Ollama integration uses its stable HTTP boundary instead of coupling core code to a
 vendor SDK.

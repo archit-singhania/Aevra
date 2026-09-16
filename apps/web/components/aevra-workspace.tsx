@@ -11,6 +11,7 @@ import {
   Clock3,
   Command,
   FileStack,
+  FileText,
   Gauge,
   Instagram,
   Linkedin,
@@ -47,11 +48,36 @@ const platforms = [
 ];
 
 const steps = [
-  { label: "Brief understood", state: "done" },
-  { label: "Brand context retrieved", state: "done" },
-  { label: "Campaign plan", state: "active" },
-  { label: "Platform variants", state: "queued" },
-  { label: "Quality review", state: "queued" },
+  { label: "Context retrieval", state: "done" },
+  { label: "Campaign planning", state: "done" },
+  { label: "Content generation", state: "done" },
+  { label: "Platform adaptation", state: "done" },
+  { label: "Quality validation", state: "active" },
+  { label: "Approval boundary", state: "queued" },
+];
+
+const reviewVariants = [
+  {
+    platform: "LinkedIn",
+    tone: "linkedin-bg",
+    score: 96,
+    copy: "Developer tools should not ask teams to choose between speed and evidence. Aevra Studio keeps campaign decisions grounded in the knowledge your organization has already verified.",
+    hashtags: ["#Aevra", "#AgenticAI", "#DeveloperTools"],
+  },
+  {
+    platform: "Instagram",
+    tone: "instagram-bg",
+    score: 93,
+    copy: "Your brand knowledge, transformed into platform-native stories — with evidence attached and approval built in.",
+    hashtags: ["#Aevra", "#BrandIntelligence", "#ContentOps"],
+  },
+  {
+    platform: "YouTube",
+    tone: "youtube-bg",
+    score: 94,
+    copy: "See how Aevra Studio turns a verified product brief into a grounded, review-ready campaign for every channel.",
+    hashtags: ["#Aevra", "#RAG", "#MarketingAI"],
+  },
 ];
 
 export function AevraWorkspace() {
@@ -59,6 +85,8 @@ export function AevraWorkspace() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [approved, setApproved] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [activeVariant, setActiveVariant] = useState(0);
   const commandInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -479,7 +507,7 @@ export function AevraWorkspace() {
                 </span>
               ) : (
                 <>
-                  <Button variant="secondary" size="sm">
+                  <Button variant="secondary" size="sm" onClick={() => setReviewOpen(true)}>
                     Review assets
                   </Button>
                   <Button size="sm" onClick={() => setApproved(true)}>
@@ -549,6 +577,109 @@ export function AevraWorkspace() {
               </span>
               <kbd>C</kbd>
             </button>
+          </section>
+        </div>
+      )}
+
+      {reviewOpen && (
+        <div className="review-overlay">
+          <button
+            type="button"
+            className="command-backdrop"
+            onClick={() => setReviewOpen(false)}
+            aria-label="Close variant review"
+          />
+          <section className="review-dialog" role="dialog" aria-modal="true">
+            <header className="review-header">
+              <div>
+                <span className="approval-kicker">Revision 1 · Manual approval</span>
+                <h2>Review campaign variants</h2>
+                <p>Every factual variant retains the Brand Brain evidence used to create it.</p>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setReviewOpen(false)}
+                aria-label="Close review"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <div className="review-layout">
+              <nav className="variant-list" aria-label="Generated variants">
+                {reviewVariants.map((variant, index) => (
+                  <button
+                    type="button"
+                    key={variant.platform}
+                    className={cn(index === activeVariant && "selected")}
+                    onClick={() => setActiveVariant(index)}
+                  >
+                    <span className={cn("variant-platform-icon", variant.tone)}>
+                      {variant.platform.slice(0, 1)}
+                    </span>
+                    <span>
+                      <strong>{variant.platform}</strong>
+                      <small>Platform-native copy</small>
+                    </span>
+                    <b>{variant.score}</b>
+                  </button>
+                ))}
+              </nav>
+              <article className="variant-preview">
+                <div className="variant-preview-meta">
+                  <span>{reviewVariants[activeVariant].platform} variant</span>
+                  <span className="quality-chip">
+                    <ShieldCheck size={13} /> {reviewVariants[activeVariant].score}/100
+                  </span>
+                </div>
+                <p className="variant-copy">{reviewVariants[activeVariant].copy}</p>
+                <div className="variant-hashtags">
+                  {reviewVariants[activeVariant].hashtags.map((tag) => (
+                    <span key={tag}>{tag}</span>
+                  ))}
+                </div>
+                <div className="evidence-card">
+                  <div className="heading-icon lime">
+                    <FileText size={16} />
+                  </div>
+                  <div>
+                    <strong>2 evidence references attached</strong>
+                    <p>Verified product brief · Brand positioning guide</p>
+                  </div>
+                  <button type="button">Inspect citations</button>
+                </div>
+                <div className="variant-notes">
+                  <span>
+                    <Check size={13} /> Voice aligned
+                  </span>
+                  <span>
+                    <Check size={13} /> Claims grounded
+                  </span>
+                  <span>
+                    <Check size={13} /> Platform fit
+                  </span>
+                </div>
+              </article>
+            </div>
+            <footer className="review-footer">
+              <button type="button" className="mode-button">
+                Regenerate with feedback
+              </button>
+              <div>
+                <Button variant="secondary" size="sm" onClick={() => setReviewOpen(false)}>
+                  Save for later
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setApproved(true);
+                    setReviewOpen(false);
+                  }}
+                >
+                  Approve revision <ArrowRight size={15} />
+                </Button>
+              </div>
+            </footer>
           </section>
         </div>
       )}

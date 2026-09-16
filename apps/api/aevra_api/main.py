@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from aevra_api.api.routes.auth import router as auth_router
 from aevra_api.api.routes.brands import router as brands_router
+from aevra_api.api.routes.campaigns import router as campaigns_router
 from aevra_api.api.routes.knowledge import router as knowledge_router
 from aevra_api.api.routes.models import router as models_router
 from aevra_api.api.routes.workspaces import router as workspaces_router
@@ -11,6 +12,7 @@ from aevra_api.domain.errors import (
     AuthenticationError,
     ConflictError,
     ForbiddenError,
+    GenerationError,
     NotFoundError,
     ProviderUnavailableError,
     UnsupportedContentError,
@@ -34,6 +36,7 @@ app.include_router(workspaces_router, prefix="/api/v1")
 app.include_router(brands_router, prefix="/api/v1")
 app.include_router(knowledge_router, prefix="/api/v1")
 app.include_router(models_router, prefix="/api/v1")
+app.include_router(campaigns_router, prefix="/api/v1")
 
 
 def error_response(code: str, message: str, status_code: int) -> JSONResponse:
@@ -79,6 +82,11 @@ def handle_provider_unavailable_error(
     return error_response("provider_unavailable", str(exc), status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
+@app.exception_handler(GenerationError)
+def handle_generation_error(_request: Request, exc: GenerationError) -> JSONResponse:
+    return error_response("generation_failed", str(exc), status.HTTP_502_BAD_GATEWAY)
+
+
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="aevra-api", phase=4)
+    return HealthResponse(status="ok", service="aevra-api", phase=6)

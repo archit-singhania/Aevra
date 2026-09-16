@@ -6,6 +6,7 @@ from sqlalchemy import (
     JSON,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -227,3 +228,154 @@ class KnowledgeChunk(TimestampMixin, Base):
     token_count: Mapped[int] = mapped_column(Integer)
     embedding_model: Mapped[str] = mapped_column(String(120))
     embedding: Mapped[list[float]] = mapped_column(Vector(384).with_variant(JSON(), "sqlite"))
+
+
+class Campaign(TimestampMixin, Base):
+    __tablename__ = "campaigns"
+    __table_args__ = (
+        UniqueConstraint("id", "workspace_id", name="uq_campaigns_id_workspace"),
+        ForeignKeyConstraint(
+            ["brand_id", "workspace_id"],
+            ["brand_profiles.id", "brand_profiles.workspace_id"],
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "publishing_mode IN ('manual', 'assisted', 'autonomous')",
+            name="valid_campaign_publishing_mode",
+        ),
+        CheckConstraint(
+            "status IN ('draft', 'context_retrieval', 'planning', "
+            "'content_generation', 'platform_adaptation', 'validation', "
+            "'awaiting_approval', 'approved', 'failed', 'cancelled')",
+            name="valid_campaign_status",
+        ),
+        CheckConstraint("current_revision >= 0", name="valid_campaign_revision"),
+        Index("ix_campaigns_workspace_created", "workspace_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    brand_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    goal: Mapped[str] = mapped_column(Text)
+    product_service: Mapped[str] = mapped_column(String(300))
+    audience: Mapped[str] = mapped_column(Text)
+    instructions: Mapped[str] = mapped_column(Text, default="")
+    platforms: Mapped[list[str]] = mapped_column(JSON, default=list)
+    media_types: Mapped[list[str]] = mapped_column(JSON, default=list)
+    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    publishing_mode: Mapped[str] = mapped_column(String(16), default="manual")
+    status: Mapped[str] = mapped_column(String(32), default="draft")
+    current_revision: Mapped[int] = mapped_column(Integer, default=0)
+    latest_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class CampaignRun(TimestampMixin, Base):
+    __tablename__ = "campaign_runs"
+    __table_args__ = (
+        UniqueConstraint("id", "campaign_id", "workspace_id", name="uq_runs_scope"),
+        ForeignKeyConstraint(
+            ["campaign_id", "workspace_id"],
+            ["campaigns.id", "campaigns.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("campaign_id", "run_number", name="uq_campaign_run_number"),
+        CheckConstraint(
+            "status IN ('running', 'waiting_approval', 'completed', 'failed', 'cancelled')",
+            name="valid_campaign_run_status",
+        ),
+        CheckConstraint("run_number > 0", name="valid_campaign_run_number"),
+        Index("ix_campaign_runs_workspace_campaign", "workspace_id", "campaign_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    run_number: Mapped[int] = mapped_column(Integer)
+    revision: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(24), default="running")
+    current_node: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    state_snapshot: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    provider_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class CampaignStep(TimestampMixin, Base):
+    __tablename__ = "campaign_steps"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["run_id", "campaign_id", "workspace_id"],
+            ["campaign_runs.id", "campaign_runs.campaign_id", "campaign_runs.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("run_id", "sequence", name="uq_campaign_step_sequence"),
+        CheckConstraint("status IN ('completed', 'failed')", name="valid_campaign_step_status"),
+        CheckConstraint("sequence > 0", name="valid_campaign_step_sequence"),
+        Index("ix_campaign_steps_workspace_run", "workspace_id", "run_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    run_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    node_name: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(16))
+    input_digest: Mapped[str] = mapped_column(String(64))
+    output_snapshot: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    citations: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    duration_ms: Mapped[int] = mapped_column(Integer)
+    provider_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+    error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class ContentVariant(TimestampMixin, Base):
+    __tablename__ = "content_variants"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["campaign_id", "workspace_id"],
+            ["campaigns.id", "campaigns.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint(
+            "campaign_id", "revision", "platform", name="uq_variant_campaign_revision_platform"
+        ),
+        CheckConstraint(
+            "platform IN ('linkedin', 'instagram', 'threads', 'x', 'facebook', 'youtube')",
+            name="valid_content_platform",
+        ),
+        CheckConstraint(
+            "status IN ('draft', 'approved', 'rejected', 'superseded')",
+            name="valid_content_variant_status",
+        ),
+        CheckConstraint("revision > 0", name="valid_content_variant_revision"),
+        CheckConstraint(
+            "quality_score >= 0 AND quality_score <= 100",
+            name="valid_content_quality_score",
+        ),
+        Index("ix_content_variants_workspace_campaign", "workspace_id", "campaign_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    campaign_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    revision: Mapped[int] = mapped_column(Integer)
+    platform: Mapped[str] = mapped_column(String(16))
+    title: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    caption: Mapped[str] = mapped_column(Text)
+    hashtags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    call_to_action: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="draft")
+    quality_score: Mapped[float] = mapped_column(Float, default=0.0)
+    validation_issues: Mapped[list[str]] = mapped_column(JSON, default=list)
+    citations: Mapped[list[dict[str, object]]] = mapped_column(JSON, default=list)
+    generated_by_model: Mapped[str] = mapped_column(String(160))
+    generation_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)

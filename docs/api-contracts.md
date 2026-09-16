@@ -28,7 +28,15 @@ The Phase 0 `/health` endpoint is intentionally unversioned and contains no depe
 | POST | `/api/v1/workspaces/{workspace_id}/knowledge/search` | Retrieve workspace-filtered excerpts with document, URI, score, and offset citations |
 | GET | `/api/v1/workspaces/{workspace_id}/models/local/status` | Report availability of the configured local model |
 | POST | `/api/v1/workspaces/{workspace_id}/models/local/generate` | Run a bounded, authorized local generation request |
+| GET/POST | `/api/v1/workspaces/{workspace_id}/campaigns` | List or create tenant-scoped campaign briefs |
+| GET | `/api/v1/workspaces/{workspace_id}/campaigns/{campaign_id}` | Read campaign lifecycle and revision state |
+| POST | `/api/v1/workspaces/{workspace_id}/campaigns/{campaign_id}/generate` | Run the grounded LangGraph through its approval boundary |
+| POST | `/api/v1/workspaces/{workspace_id}/campaigns/{campaign_id}/decision` | Approve or reject the current revision |
+| GET | `/api/v1/workspaces/{workspace_id}/campaigns/{campaign_id}/variants` | Read platform variants, citations, quality findings, and revision history |
 
 Knowledge mutations require owner, administrator, or member access. Viewers may list and
 retrieve. Foreign workspace access returns `404`, so resource existence is not disclosed.
 Provider transport errors use the stable `provider_unavailable` code and HTTP `503`.
+Structurally invalid model output uses `generation_failed` and HTTP `502`. Prompts and raw
+reasoning are not returned by campaign endpoints; callers receive the plan, safe node trace,
+provider metadata, citations, and validated artifacts.

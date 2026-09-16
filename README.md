@@ -2,10 +2,10 @@
 
 Aevra is a self-hostable agentic content intelligence and publishing platform. It grounds campaign work in a workspace-specific Brand Brain, creates platform-native variants, routes them through approval, and hands approved actions to deterministic publishing workers.
 
-> Current milestone: **Phases 0–4 complete.** Aevra now includes authenticated tenant
-> boundaries, the Brand Brain knowledge pipeline, cited semantic retrieval, pgvector search,
-> and a replaceable local Qwen/Ollama model gateway. The dashboard remains representative
-> until Phase 5 connects campaign orchestration to these APIs.
+> Current milestone: **Phases 0–6 complete.** Aevra now includes authenticated tenant
+> boundaries, a cited Brand Brain, local Qwen/Ollama providers, durable campaign state,
+> LangGraph orchestration, platform-native content variants, quality validation, revision
+> history, and a human approval boundary.
 
 ## Quick start
 
@@ -66,6 +66,16 @@ download. Docker reads Ollama on `host.docker.internal:11434` from `.env`.
 - `POST /api/v1/workspaces/{workspace_id}/models/local/generate` sends a constrained,
   workspace-authorized generation request through the provider abstraction.
 
+## Phase 5–6 API
+
+- `POST /api/v1/workspaces/{workspace_id}/campaigns` creates a tenant-scoped campaign brief.
+- `POST /api/v1/workspaces/{workspace_id}/campaigns/{campaign_id}/generate` runs the
+  retrieval, planning, generation, adaptation, validation, and approval-boundary graph.
+- `POST /api/v1/workspaces/{workspace_id}/campaigns/{campaign_id}/decision` approves or
+  rejects the current immutable revision.
+- `GET /api/v1/workspaces/{workspace_id}/campaigns/{campaign_id}/variants` returns complete
+  platform and revision history with citations and quality findings.
+
 ## Quality checks
 
 ```bash
@@ -102,4 +112,4 @@ docs/                   Architecture and delivery records
 
 Read [docs/architecture.md](docs/architecture.md) for system boundaries,
 [docs/roadmap.md](docs/roadmap.md) for the phased plan, and
-[docs/phase-3-4-audit.md](docs/phase-3-4-audit.md) for the current delivery audit.
+[docs/phase-5-6-audit.md](docs/phase-5-6-audit.md) for the current delivery audit.
