@@ -53,6 +53,7 @@ def client(session_factory: sessionmaker[Session]) -> Generator[TestClient, None
         return Settings(
             secret_key="test-secret-key-that-is-at-least-thirty-two-characters",
             database_url="sqlite://",
+            embedding_provider="hashing",
         )
 
     app.dependency_overrides[get_session] = override_session

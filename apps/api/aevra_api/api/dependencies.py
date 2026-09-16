@@ -5,6 +5,9 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from aevra_api.ai.contracts import EmbeddingProvider, LLMProvider
+from aevra_api.ai.embeddings import build_embedding_provider
+from aevra_api.ai.llm import build_llm_provider
 from aevra_api.config import Settings, get_settings
 from aevra_api.db.models import User
 from aevra_api.db.session import get_session
@@ -27,3 +30,15 @@ def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def get_embedding_provider(settings: SettingsDep) -> EmbeddingProvider:
+    return build_embedding_provider(settings)
+
+
+def get_llm_provider(settings: SettingsDep) -> LLMProvider:
+    return build_llm_provider(settings)
+
+
+EmbeddingProviderDep = Annotated[EmbeddingProvider, Depends(get_embedding_provider)]
+LLMProviderDep = Annotated[LLMProvider, Depends(get_llm_provider)]

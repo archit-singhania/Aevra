@@ -2,7 +2,10 @@
 
 Aevra is a self-hostable agentic content intelligence and publishing platform. It grounds campaign work in a workspace-specific Brand Brain, creates platform-native variants, routes them through approval, and hands approved actions to deterministic publishing workers.
 
-> Current milestone: **Phases 0–2 complete.** Authentication, tenant persistence, workspaces, brand profiles, and brand rules are implemented. The dashboard still uses representative content until later campaign phases connect it to generated assets.
+> Current milestone: **Phases 0–4 complete.** Aevra now includes authenticated tenant
+> boundaries, the Brand Brain knowledge pipeline, cited semantic retrieval, pgvector search,
+> and a replaceable local Qwen/Ollama model gateway. The dashboard remains representative
+> until Phase 5 connects campaign orchestration to these APIs.
 
 ## Quick start
 
@@ -40,6 +43,29 @@ python -m venv .venv
 .venv/Scripts/python -m uvicorn aevra_api.main:app --reload --app-dir apps/api
 ```
 
+Install the local models before selecting the Ollama embedding provider:
+
+```bash
+ollama pull qwen3:8b
+ollama pull nomic-embed-text
+```
+
+The development/test default uses deterministic hashing embeddings and needs no model
+download. Docker reads Ollama on `host.docker.internal:11434` from `.env`.
+
+## Phase 3–4 API
+
+- `POST /api/v1/workspaces/{workspace_id}/knowledge/documents` ingests text, Markdown,
+  or extracted website HTML.
+- `POST /api/v1/workspaces/{workspace_id}/knowledge/documents/upload` accepts TXT,
+  Markdown, HTML, and PDF files.
+- `POST /api/v1/workspaces/{workspace_id}/knowledge/search` returns ranked excerpts with
+  source and offset citations.
+- `GET /api/v1/workspaces/{workspace_id}/models/local/status` checks the configured local
+  model without exposing infrastructure details.
+- `POST /api/v1/workspaces/{workspace_id}/models/local/generate` sends a constrained,
+  workspace-authorized generation request through the provider abstraction.
+
 ## Quality checks
 
 ```bash
@@ -74,4 +100,6 @@ tests/
 docs/                   Architecture and delivery records
 ```
 
-Read [docs/architecture.md](docs/architecture.md) for system boundaries, [docs/roadmap.md](docs/roadmap.md) for the phased plan, and [docs/phase-1-2-audit.md](docs/phase-1-2-audit.md) for the current delivery audit.
+Read [docs/architecture.md](docs/architecture.md) for system boundaries,
+[docs/roadmap.md](docs/roadmap.md) for the phased plan, and
+[docs/phase-3-4-audit.md](docs/phase-3-4-audit.md) for the current delivery audit.

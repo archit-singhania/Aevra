@@ -22,3 +22,13 @@ The Phase 0 `/health` endpoint is intentionally unversioned and contains no depe
 | GET/POST | `/api/v1/workspaces/{workspace_id}/brands` | List or create tenant-scoped brand profiles |
 | GET/PATCH | `/api/v1/workspaces/{workspace_id}/brands/{brand_id}` | Read or update an authorized brand |
 | GET/POST | `/api/v1/workspaces/{workspace_id}/brands/{brand_id}/rules` | List or create prioritized brand rules |
+| POST | `/api/v1/workspaces/{workspace_id}/knowledge/documents` | Normalize, chunk, embed, and store text, Markdown, or website text |
+| POST | `/api/v1/workspaces/{workspace_id}/knowledge/documents/upload` | Ingest validated TXT, Markdown, HTML, or PDF content |
+| GET | `/api/v1/workspaces/{workspace_id}/knowledge/documents` | List authorized knowledge sources without returning full source content |
+| POST | `/api/v1/workspaces/{workspace_id}/knowledge/search` | Retrieve workspace-filtered excerpts with document, URI, score, and offset citations |
+| GET | `/api/v1/workspaces/{workspace_id}/models/local/status` | Report availability of the configured local model |
+| POST | `/api/v1/workspaces/{workspace_id}/models/local/generate` | Run a bounded, authorized local generation request |
+
+Knowledge mutations require owner, administrator, or member access. Viewers may list and
+retrieve. Foreign workspace access returns `404`, so resource existence is not disclosed.
+Provider transport errors use the stable `provider_unavailable` code and HTTP `503`.

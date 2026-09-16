@@ -16,3 +16,11 @@ class NotFoundError(DomainError):
 
 class AuthenticationError(DomainError):
     pass
+
+
+class UnsupportedContentError(DomainError):
+    pass
+
+
+class ProviderUnavailableError(DomainError):
+    pass

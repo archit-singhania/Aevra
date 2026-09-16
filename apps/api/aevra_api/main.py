@@ -4,12 +4,16 @@ from pydantic import BaseModel
 
 from aevra_api.api.routes.auth import router as auth_router
 from aevra_api.api.routes.brands import router as brands_router
+from aevra_api.api.routes.knowledge import router as knowledge_router
+from aevra_api.api.routes.models import router as models_router
 from aevra_api.api.routes.workspaces import router as workspaces_router
 from aevra_api.domain.errors import (
     AuthenticationError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
+    ProviderUnavailableError,
+    UnsupportedContentError,
 )
 
 
@@ -28,6 +32,8 @@ app = FastAPI(
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(workspaces_router, prefix="/api/v1")
 app.include_router(brands_router, prefix="/api/v1")
+app.include_router(knowledge_router, prefix="/api/v1")
+app.include_router(models_router, prefix="/api/v1")
 
 
 def error_response(code: str, message: str, status_code: int) -> JSONResponse:
@@ -59,6 +65,20 @@ def handle_conflict_error(_request: Request, exc: ConflictError) -> JSONResponse
     return error_response("conflict", str(exc), status.HTTP_409_CONFLICT)
 
 
+@app.exception_handler(UnsupportedContentError)
+def handle_unsupported_content_error(
+    _request: Request, exc: UnsupportedContentError
+) -> JSONResponse:
+    return error_response("unsupported_content", str(exc), status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+
+@app.exception_handler(ProviderUnavailableError)
+def handle_provider_unavailable_error(
+    _request: Request, exc: ProviderUnavailableError
+) -> JSONResponse:
+    return error_response("provider_unavailable", str(exc), status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", service="aevra-api", phase=2)
+    return HealthResponse(status="ok", service="aevra-api", phase=4)

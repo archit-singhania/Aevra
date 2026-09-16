@@ -5,8 +5,8 @@
 | 0 ✅ | Monorepo, product shell, quality tooling, Docker, architecture docs | Passed |
 | 1 ✅ | PostgreSQL, migrations, users, organizations, workspaces | Passed: auth and tenant lifecycle tests |
 | 2 ✅ | Brand profiles, rules, role permissions, and tenant isolation | Passed: cross-tenant API, repository, and database denial tests |
-| 3 | Ingestion, embeddings, pgvector, cited RAG | Retrieval isolation and citation tests pass |
-| 4 | Local model provider and Qwen/Ollama | Provider contract and offline smoke tests pass |
+| 3 ✅ | Ingestion, embeddings, pgvector, cited RAG | Passed: format, citation, filter, isolation, and vector DDL tests |
+| 4 ✅ | Local model provider and Qwen/Ollama | Passed: provider contract, mock transport, failure, and authorization tests |
 | 5 | Campaign models and LangGraph orchestration | State transition and checkpoint tests pass |
 | 6 | Platform-native text variants | Grounding, quality, and adaptation evals pass |
 | 7 | Local image generation | Asset pipeline and resize/crop tests pass |
@@ -16,4 +16,4 @@
 | 11 | Remaining approved connectors | Per-platform contract and smoke tests pass |
 | 12 | Scheduling, analytics, observability, hardening, mobile | Production and recovery checklist passes |
 
-No later phase starts until the current phase's exit gate is green.
+Phase 5 is the next implementation boundary. No later phase starts until its exit gate is green.

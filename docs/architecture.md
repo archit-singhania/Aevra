@@ -53,5 +53,7 @@ Exceptional states are `FAILED`, `RETRYING`, and `CANCELLED`. Manual approval is
 
 ## Deployment shape
 
-The local stack uses PostgreSQL with pgvector, Redis, MinIO, the Next.js web app, and FastAPI. Celery workers, Beat, Ollama, and media services are added only in the phases that exercise them so Phase 0 remains reliable on ordinary developer hardware.
-
+The local stack uses PostgreSQL with pgvector, Redis, MinIO, the Next.js web app, and
+FastAPI. Phase 4 reaches a host-managed Ollama runtime through a narrow embedding/chat
+provider boundary. Celery workers, Beat, and media services are added only in the phases
+that exercise them so the base stack remains reliable on ordinary developer hardware.

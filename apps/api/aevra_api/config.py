@@ -15,6 +15,15 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./aevra.db"
     seed_email: str = "owner@aevra.local"
     seed_password: str = Field(default="AevraLocalOnly!2026", min_length=12)
+    embedding_dimensions: int = Field(default=384, ge=64, le=4096)
+    knowledge_chunk_chars: int = Field(default=900, ge=200, le=4000)
+    knowledge_chunk_overlap: int = Field(default=120, ge=0, le=1000)
+    max_document_bytes: int = Field(default=20 * 1024 * 1024, ge=1024)
+    embedding_provider: str = "hashing"
+    embedding_model: str = "nomic-embed-text"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen3:8b"
+    ollama_timeout_seconds: float = Field(default=120.0, ge=1, le=600)
 
     @model_validator(mode="after")
     def reject_development_secret_in_production(self) -> "Settings":

@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     CheckConstraint,
@@ -158,3 +159,71 @@ class BrandRule(TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     brand: Mapped[BrandProfile] = relationship(back_populates="rules")
+
+
+class KnowledgeDocument(TimestampMixin, Base):
+    __tablename__ = "knowledge_documents"
+    __table_args__ = (
+        UniqueConstraint("id", "workspace_id", name="uq_knowledge_documents_id_workspace"),
+        UniqueConstraint("workspace_id", "checksum", name="uq_knowledge_documents_checksum"),
+        ForeignKeyConstraint(
+            ["brand_id", "workspace_id"],
+            ["brand_profiles.id", "brand_profiles.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(
+            "source_type IN ('text', 'markdown', 'website', 'pdf')",
+            name="valid_knowledge_source_type",
+        ),
+        CheckConstraint(
+            "status IN ('processing', 'ready', 'failed')",
+            name="valid_knowledge_status",
+        ),
+        Index("ix_knowledge_documents_workspace_created", "workspace_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    brand_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True, index=True)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(300))
+    source_type: Mapped[str] = mapped_column(String(16))
+    source_uri: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    checksum: Mapped[str] = mapped_column(String(64))
+    normalized_content: Mapped[str] = mapped_column(Text)
+    content_length: Mapped[int] = mapped_column(Integer)
+    document_metadata: Mapped[dict[str, str]] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="processing")
+    error_message: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class KnowledgeChunk(TimestampMixin, Base):
+    __tablename__ = "knowledge_chunks"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["document_id", "workspace_id"],
+            ["knowledge_documents.id", "knowledge_documents.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("document_id", "chunk_index"),
+        CheckConstraint("chunk_index >= 0", name="valid_knowledge_chunk_index"),
+        CheckConstraint("start_offset >= 0", name="valid_knowledge_start_offset"),
+        CheckConstraint("end_offset > start_offset", name="valid_knowledge_end_offset"),
+        Index("ix_knowledge_chunks_workspace_document", "workspace_id", "document_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    document_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    start_offset: Mapped[int] = mapped_column(Integer)
+    end_offset: Mapped[int] = mapped_column(Integer)
+    token_count: Mapped[int] = mapped_column(Integer)
+    embedding_model: Mapped[str] = mapped_column(String(120))
+    embedding: Mapped[list[float]] = mapped_column(Vector(384).with_variant(JSON(), "sqlite"))
