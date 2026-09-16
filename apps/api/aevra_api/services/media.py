@@ -16,6 +16,7 @@ from aevra_api.domain.errors import (
     NotFoundError,
     ProviderUnavailableError,
 )
+from aevra_api.media.flux_provider import FluxHTTPProvider
 from aevra_api.media.image_contracts import ImageGenerationRequest as ProviderImageRequest
 from aevra_api.media.image_renderer import DeterministicImageProvider
 from aevra_api.media.image_transforms import BrandVisualStyle, encode_image, resize_cover
@@ -56,7 +57,11 @@ class MediaService:
         self.repository = MediaRepository(session)
         self.tenancy_repository = TenancyRepository(session)
         self.storage = LocalMediaStorage(settings.media_root)
-        self.image_provider = image_provider or DeterministicImageProvider()
+        self.image_provider = image_provider or (
+            FluxHTTPProvider(settings.flux_base_url)
+            if settings.image_provider.lower() == "flux"
+            else DeterministicImageProvider()
+        )
         self.video_composer = video_composer
 
     def _require_access(self, user_id: uuid.UUID, workspace_id: uuid.UUID) -> str:

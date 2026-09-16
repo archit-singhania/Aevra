@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     video_default_seconds: float = Field(default=6.0, ge=0.5, le=60)
     video_max_seconds: float = Field(default=60.0, ge=0.5, le=300)
     video_fps: int = Field(default=30, ge=1, le=60)
+    redis_url: str = "redis://localhost:6379/0"
+    enable_celery: bool = False
+    storage_backend: str = "local"
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "aevra"
+    minio_secret_key: str = "aevra-development-only"
+    minio_bucket: str = "aevra-assets"
+    minio_secure: bool = False
 
     @model_validator(mode="after")
     def reject_development_secret_in_production(self) -> "Settings":

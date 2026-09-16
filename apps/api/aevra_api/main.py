@@ -20,6 +20,7 @@ from aevra_api.domain.errors import (
     ProviderUnavailableError,
     UnsupportedContentError,
 )
+from aevra_api.observability import RequestContextMiddleware
 
 
 class HealthResponse(BaseModel):
@@ -33,6 +34,7 @@ app = FastAPI(
     version="0.1.0",
     description="Deterministic application boundary for Aevra.",
 )
+app.add_middleware(RequestContextMiddleware)
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(workspaces_router, prefix="/api/v1")

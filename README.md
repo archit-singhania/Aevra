@@ -108,6 +108,14 @@ download. Docker reads Ollama on `host.docker.internal:11434` from `.env`.
   snapshots, while `POST .../metrics` records normalized impressions and engagement metrics.
 - `GET /api/v1/workspaces/{workspace_id}/operations/audit` exposes a tenant-scoped audit trail.
 
+## Remaining production foundations
+
+The free/local foundations for OAuth vaulting, media uploads, Celery/Redis workers, normalized
+analytics, request observability, Flutter, optional FLUX HTTP generation, advanced storyboard
+subtitles, and MinIO/S3 storage are now included. See
+[docs/remaining-9-areas-audit.md](docs/remaining-9-areas-audit.md) for the implementation and
+the exact provider/deployment handoff still required.
+
 ## Quality checks
 
 ```bash

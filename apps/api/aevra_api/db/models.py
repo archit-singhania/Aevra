@@ -559,7 +559,9 @@ class ScheduledPost(TimestampMixin, Base):
 class PostMetric(TimestampMixin, Base):
     __tablename__ = "post_metrics"
     __table_args__ = (
-        UniqueConstraint("workspace_id", "external_post_id", "collected_at", name="uq_post_metric_snapshot"),
+        UniqueConstraint(
+            "workspace_id", "external_post_id", "collected_at", name="uq_post_metric_snapshot"
+        ),
         CheckConstraint("impressions >= 0", name="valid_metric_impressions"),
         CheckConstraint("engagements >= 0", name="valid_metric_engagements"),
         Index("ix_post_metrics_workspace_collected", "workspace_id", "collected_at"),
