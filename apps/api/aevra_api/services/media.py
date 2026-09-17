@@ -20,6 +20,7 @@ from aevra_api.media.flux_provider import FluxHTTPProvider
 from aevra_api.media.image_contracts import ImageGenerationRequest as ProviderImageRequest
 from aevra_api.media.image_renderer import DeterministicImageProvider
 from aevra_api.media.image_transforms import BrandVisualStyle, encode_image, resize_cover
+from aevra_api.media.object_storage import ObjectStorage, build_object_storage
 from aevra_api.media.storage import LocalMediaStorage
 from aevra_api.media.video_composer import VideoComposer
 from aevra_api.media.video_contracts import (
@@ -57,12 +58,28 @@ class MediaService:
         self.repository = MediaRepository(session)
         self.tenancy_repository = TenancyRepository(session)
         self.storage = LocalMediaStorage(settings.media_root)
+        self.object_storage: ObjectStorage | None = (
+            build_object_storage(settings)
+            if str(settings.storage_backend).lower() in {"minio", "s3", "s3-compatible"}
+            else None
+        )
         self.image_provider = image_provider or (
             FluxHTTPProvider(settings.flux_base_url)
             if settings.image_provider.lower() == "flux"
             else DeterministicImageProvider()
         )
         self.video_composer = video_composer
+
+    def _write(self, storage_key: str, content: bytes, content_type: str) -> None:
+        if self.object_storage is not None:
+            self.object_storage.put(storage_key, content, content_type)
+        else:
+            self.storage.write(storage_key, content)
+
+    def _read(self, storage_key: str) -> bytes:
+        if self.object_storage is not None:
+            return self.object_storage.get(storage_key)
+        return self.storage.read(storage_key)
 
     def _require_access(self, user_id: uuid.UUID, workspace_id: uuid.UUID) -> str:
         access = self.tenancy_repository.get_workspace_access(user_id, workspace_id)
@@ -112,7 +129,7 @@ class MediaService:
 
         source_id = uuid.uuid4()
         source_key = self.storage.key_for(workspace_id, source_id, result.image.file_extension)
-        self.storage.write(source_key, result.image.data)
+        self._write(source_key, result.image.data, result.image.content_type)
         source = MediaAsset(
             id=source_id,
             workspace_id=workspace_id,
@@ -141,7 +158,7 @@ class MediaService:
                 encoded = encode_image(transformed, "png")
                 asset_id = uuid.uuid4()
                 storage_key = self.storage.key_for(workspace_id, asset_id, encoded.file_extension)
-                self.storage.write(storage_key, encoded.data)
+                self._write(storage_key, encoded.data, encoded.content_type)
                 assets.append(
                     MediaAsset(
                         id=asset_id,
@@ -197,7 +214,7 @@ class MediaService:
     ) -> tuple[MediaAsset, bytes]:
         asset = self.get_asset(user_id, workspace_id, asset_id)
         try:
-            return asset, self.storage.read(asset.storage_key)
+            return asset, self._read(asset.storage_key)
         except (FileNotFoundError, OSError) as error:
             raise NotFoundError("Media asset file is unavailable") from error
 
@@ -216,69 +233,80 @@ class MediaService:
             for asset in source_assets
         ):
             raise NotFoundError("One or more source image assets were not found")
-        source_paths = tuple(self.storage.path_for(asset.storage_key) for asset in source_assets)
         duration = request.duration_seconds or self.settings.video_default_seconds
         duration = min(duration, self.settings.video_max_seconds, 180.0)
-        per_slide = min(30.0, max(0.5, duration / len(source_paths)))
         composer_mode = self.settings.video_provider
         assets: list[MediaAsset] = []
-        for aspect_ratio in request.aspect_ratios:
-            with tempfile.TemporaryDirectory(prefix="aevra-video-") as temporary_directory:
-                composer = self.video_composer or VideoComposer(
-                    temporary_directory,
-                    execution_mode=cast(
-                        Literal["auto", "ffmpeg", "mock"],
-                        composer_mode if composer_mode in {"auto", "ffmpeg", "mock"} else "auto",
-                    ),
-                    ffmpeg_binary=self.settings.ffmpeg_binary,
+        with tempfile.TemporaryDirectory(prefix="aevra-video-source-") as source_directory:
+            source_paths = []
+            for source in source_assets:
+                source_path = __import__("pathlib").Path(source_directory) / source.filename
+                source_path.write_bytes(self._read(source.storage_key))
+                source_paths.append(source_path)
+            per_slide = min(30.0, max(0.5, duration / len(source_paths)))
+            for aspect_ratio in request.aspect_ratios:
+                with tempfile.TemporaryDirectory(prefix="aevra-video-") as temporary_directory:
+                    composer = self.video_composer or VideoComposer(
+                        temporary_directory,
+                        execution_mode=cast(
+                            Literal["auto", "ffmpeg", "mock"],
+                            composer_mode
+                            if composer_mode in {"auto", "ffmpeg", "mock"}
+                            else "auto",
+                        ),
+                        ffmpeg_binary=self.settings.ffmpeg_binary,
+                    )
+                    video_request = VideoCompositionRequest(
+                        slides=tuple(VideoSlide(path, per_slide) for path in source_paths),
+                        aspect_ratio=VideoAspectRatio(aspect_ratio),
+                        fps=self.settings.video_fps,
+                        output_stem=f"campaign-{campaign.id}-{aspect_ratio.replace(':', '-')}",
+                    )
+                    try:
+                        result = composer.compose(video_request)
+                    except FFmpegUnavailableError as error:
+                        raise ProviderUnavailableError(str(error)) from error
+                    except Exception as error:
+                        raise GenerationError(f"Video composition failed: {error}") from error
+                    content = result.output_path.read_bytes()
+                asset_id = uuid.uuid4()
+                extension = "mp4" if result.mode == "ffmpeg" else "json"
+                storage_key = self.storage.key_for(workspace_id, asset_id, extension)
+                self._write(
+                    storage_key,
+                    content,
+                    "video/mp4" if result.mode == "ffmpeg" else "application/json",
                 )
-                video_request = VideoCompositionRequest(
-                    slides=tuple(VideoSlide(path, per_slide) for path in source_paths),
-                    aspect_ratio=VideoAspectRatio(aspect_ratio),
-                    fps=self.settings.video_fps,
-                    output_stem=f"campaign-{campaign.id}-{aspect_ratio.replace(':', '-')}",
+                canvas = result.canvas
+                assets.append(
+                    MediaAsset(
+                        id=asset_id,
+                        workspace_id=workspace_id,
+                        campaign_id=campaign.id,
+                        created_by_user_id=user_id,
+                        parent_asset_id=source_assets[0].id,
+                        media_type="video",
+                        asset_role="composition",
+                        platform=None,
+                        status="ready",
+                        storage_key=storage_key,
+                        filename=f"{video_request.output_stem}.{extension}",
+                        mime_type="video/mp4" if result.mode == "ffmpeg" else "application/json",
+                        bytes_size=len(content),
+                        sha256=__import__("hashlib").sha256(content).hexdigest(),
+                        width=canvas.width,
+                        height=canvas.height,
+                        duration_seconds=result.duration_seconds,
+                        generation_provider=result.mode,
+                        prompt=request.caption,
+                        asset_metadata={
+                            "aspect_ratio": aspect_ratio,
+                            "render_key": result.render_key,
+                            "manifest": result.manifest,
+                            "caption": request.caption,
+                        },
+                    )
                 )
-                try:
-                    result = composer.compose(video_request)
-                except FFmpegUnavailableError as error:
-                    raise ProviderUnavailableError(str(error)) from error
-                except Exception as error:
-                    raise GenerationError(f"Video composition failed: {error}") from error
-                content = result.output_path.read_bytes()
-            asset_id = uuid.uuid4()
-            extension = "mp4" if result.mode == "ffmpeg" else "json"
-            storage_key = self.storage.key_for(workspace_id, asset_id, extension)
-            self.storage.write(storage_key, content)
-            canvas = result.canvas
-            assets.append(
-                MediaAsset(
-                    id=asset_id,
-                    workspace_id=workspace_id,
-                    campaign_id=campaign.id,
-                    created_by_user_id=user_id,
-                    parent_asset_id=source_assets[0].id,
-                    media_type="video",
-                    asset_role="composition",
-                    platform=None,
-                    status="ready",
-                    storage_key=storage_key,
-                    filename=f"{video_request.output_stem}.{extension}",
-                    mime_type="video/mp4" if result.mode == "ffmpeg" else "application/json",
-                    bytes_size=len(content),
-                    sha256=__import__("hashlib").sha256(content).hexdigest(),
-                    width=canvas.width,
-                    height=canvas.height,
-                    duration_seconds=result.duration_seconds,
-                    generation_provider=result.mode,
-                    prompt=request.caption,
-                    asset_metadata={
-                        "aspect_ratio": aspect_ratio,
-                        "render_key": result.render_key,
-                        "manifest": result.manifest,
-                        "caption": request.caption,
-                    },
-                )
-            )
         self.repository.add_many(assets)
         self.session.commit()
         return assets

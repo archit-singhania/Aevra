@@ -23,7 +23,9 @@ class MetricSnapshot:
         return round((self.engagements / self.impressions) * 100, 4)
 
 
-def normalize_metrics(platform: str, external_post_id: str, payload: dict[str, object], collected_at: datetime) -> MetricSnapshot:
+def normalize_metrics(
+    platform: str, external_post_id: str, payload: dict[str, object], collected_at: datetime
+) -> MetricSnapshot:
     def non_negative(name: str) -> int:
         value = payload.get(name, 0)
         if not isinstance(value, int) or isinstance(value, bool):

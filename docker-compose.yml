@@ -25,16 +25,33 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
-    # Optional storage profile. The default development/staging path uses local media storage;
-    # MinIO's public Docker image is not currently pullable from Docker Hub.
+    image: quay.io/minio/minio:latest
+    # Optional storage profile. The default development/staging path uses local media storage.
     profiles: ["storage"]
     command: server /data --console-address :9001
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-aevra}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-aevra-development-only}
+      # Keep the console root credentials aligned with the API S3 credentials.
+      # MINIO_* takes precedence when explicitly supplied; the AEVRA_* aliases
+      # make the setup work with the same values used by the API service.
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-${AEVRA_MINIO_ACCESS_KEY:-aevra}}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-${AEVRA_MINIO_SECRET_KEY:-aevra-development-only}}
     ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     volumes: ["minio_data:/data"]
+
+  aistor:
+    image: quay.io/minio/aistor/minio:latest
+    # Optional licensed AIStor Free profile. Keep the license file outside Git.
+    profiles: [aistor]
+    command: ["server", "/data", "--console-address", ":9001", "--license", "/minio.license"]
+    environment:
+      # AIStor reads these only while the aistor_data volume is initialized.
+      # Keep them aligned with AEVRA_MINIO_* so the console and API agree.
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-${AEVRA_MINIO_ACCESS_KEY:-aevra}}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-${AEVRA_MINIO_SECRET_KEY:-aevra-development-only}}
+    ports: ["127.0.0.1:9100:9000", "127.0.0.1:9101:9001"]
+    volumes:
+      - "aistor_data:/data"
+      - "./infrastructure/secrets/minio.license:/minio.license:ro"
 
   migrate:
     build:
@@ -70,6 +87,32 @@ services:
       timeout: 3s
       retries: 10
 
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    env_file: [.env]
+    environment:
+      AEVRA_ENABLE_CELERY: "1"
+    command: ["celery", "-A", "services.workers.celery_app:celery_app", "worker", "--loglevel=INFO", "--concurrency=1"]
+    profiles: [workers]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  beat:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    env_file: [.env]
+    environment:
+      AEVRA_ENABLE_CELERY: "1"
+    command: ["celery", "-A", "services.workers.celery_app:celery_app", "beat", "--loglevel=INFO"]
+    profiles: [workers]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
   web:
     build:
       context: .
@@ -88,3 +131,4 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  aistor_data:

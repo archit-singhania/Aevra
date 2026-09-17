@@ -45,6 +45,13 @@ class MinioObjectStorage:
             raise RuntimeError("Install the minio package to enable object storage") from error
         self.bucket = bucket
         self.client = Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
+        from minio.error import S3Error  # type: ignore[import-not-found]
+
+        try:
+            if not self.client.bucket_exists(bucket):
+                self.client.make_bucket(bucket)
+        except S3Error as error:
+            raise RuntimeError(f"Unable to initialise object-storage bucket '{bucket}'") from error
 
     def put(self, key: str, content: bytes, content_type: str) -> None:
         from io import BytesIO
@@ -71,7 +78,7 @@ class MinioObjectStorage:
 
 
 def build_object_storage(settings) -> ObjectStorage:
-    if str(settings.storage_backend).lower() == "minio":
+    if str(settings.storage_backend).lower() in {"minio", "s3", "s3-compatible"}:
         return MinioObjectStorage(
             settings.minio_endpoint,
             settings.minio_access_key,

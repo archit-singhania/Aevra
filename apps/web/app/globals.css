@@ -17,6 +17,45 @@
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
+.legal-page {
+  min-height: 100vh;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 72px 28px;
+  color: var(--text, #f4f6f2);
+}
+
+.legal-page a {
+  color: #b5ff5e;
+  text-decoration: none;
+}
+.legal-page h1 {
+  margin: 28px 0 18px;
+  font-size: clamp(2.4rem, 7vw, 5rem);
+  letter-spacing: -0.06em;
+  line-height: 0.98;
+}
+.legal-page h2 {
+  margin: 42px 0 10px;
+  font-size: 1.1rem;
+}
+.legal-page p {
+  color: var(--muted, #8d949f);
+  line-height: 1.7;
+}
+.legal-page .legal-kicker {
+  color: #b5ff5e;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-top: 72px;
+}
+.legal-page .legal-muted {
+  margin-top: 56px;
+  font-size: 0.82rem;
+  opacity: 0.7;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -2892,4 +2931,64 @@ body {
 }
 .live-app.view-overview .live-list-row {
   padding: 9px 5px;
+}
+
+/* A single motion language for every interactive control in the web app. */
+.live-app button,
+.live-auth button,
+.live-app input,
+.live-auth input,
+.live-app textarea,
+.live-app select {
+  transition:
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease;
+}
+.live-app button:not(:disabled):hover,
+.live-auth button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+.live-app button:not(:disabled):active,
+.live-auth button:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 90ms;
+}
+.live-app button:focus-visible,
+.live-auth button:focus-visible,
+.live-app input:focus-visible,
+.live-auth input:focus-visible,
+.live-app textarea:focus-visible,
+.live-app select:focus-visible {
+  outline: 2px solid rgba(181, 255, 94, 0.78);
+  outline-offset: 3px;
+}
+.live-app button:disabled,
+.live-auth button:disabled {
+  cursor: not-allowed;
+  transform: none;
+}
+.live-input-with-action {
+  position: relative;
+}
+.live-input-with-action textarea {
+  padding-right: 84px;
+}
+.voice-input-button {
+  position: absolute;
+  right: 9px;
+  bottom: 9px;
+  padding: 6px 9px;
+  border: 1px solid rgba(181, 255, 94, 0.22);
+  border-radius: 999px;
+  color: var(--muted, #8d949f);
+  background: rgba(181, 255, 94, 0.07);
+  font-size: 0.72rem;
+}
+.voice-input-button.is-active {
+  color: #b5ff5e;
+  border-color: rgba(181, 255, 94, 0.7);
 }

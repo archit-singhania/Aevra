@@ -3,6 +3,7 @@
 import { Command, Mic, Sparkles, Volume2, VolumeX, X } from "lucide-react";
 import { motion } from "motion/react";
 import { type HTMLAttributes, type ReactNode, useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type DepthCardProps = HTMLAttributes<HTMLElement> & {
   children: ReactNode;
@@ -315,5 +316,52 @@ export function VoiceIndicator({ active = false }: { active?: boolean }) {
       <Mic size={13} />
       <span>{active ? "Listening" : "Voice ready"}</span>
     </span>
+  );
+}
+
+type SpeechRecognitionResultLike = { [index: number]: { [index: number]: { transcript: string } } };
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: { results: SpeechRecognitionResultLike }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+};
+
+/** Browser-native voice capture for campaign briefs; no audio is uploaded by VAE. */
+export function VoiceInputButton({ onTranscript }: { onTranscript: (text: string) => void }) {
+  const [active, setActive] = useState(false);
+  const start = () => {
+    const browserWindow = window as Window & {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const Recognition = browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition;
+    if (!Recognition) return;
+    const recognition = new Recognition();
+    recognition.lang = navigator.language || "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript?.trim();
+      if (transcript) onTranscript(transcript);
+    };
+    recognition.onerror = () => setActive(false);
+    recognition.onend = () => setActive(false);
+    setActive(true);
+    recognition.start();
+  };
+  return (
+    <button
+      type="button"
+      className={cn("voice-input-button", active && "is-active")}
+      onClick={start}
+      aria-label={active ? "Listening for voice input" : "Add voice input"}
+      title={active ? "Listening…" : "Speak a brief"}
+    >
+      <Mic size={13} /> {active ? "Listening…" : "Speak"}
+    </button>
   );
 }

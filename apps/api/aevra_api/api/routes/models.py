@@ -1,6 +1,8 @@
+import json
 import uuid
 
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from aevra_api.api.dependencies import CurrentUser, LLMProviderDep, SessionDep
 from aevra_api.schemas.models import (
@@ -45,4 +47,29 @@ def generate_locally(
         prompt_tokens=result.prompt_tokens,
         completion_tokens=result.completion_tokens,
         metadata=result.metadata,
+    )
+
+
+@router.post("/generate/stream", response_class=StreamingResponse)
+def stream_locally(
+    workspace_id: uuid.UUID,
+    request: LocalGenerateRequest,
+    current_user: CurrentUser,
+    session: SessionDep,
+    provider: LLMProviderDep,
+) -> StreamingResponse:
+    chunks = LocalModelService(session, provider).stream(current_user.id, workspace_id, request)
+
+    def events():
+        try:
+            for chunk in chunks:
+                yield f"data: {json.dumps({'token': chunk})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as error:
+            yield f"event: error\ndata: {json.dumps({'message': str(error)})}\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

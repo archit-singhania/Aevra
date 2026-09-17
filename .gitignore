@@ -6,6 +6,7 @@ dist/
 coverage/
 .env
 .env.local
+infrastructure/secrets/
 .venv/
 __pycache__/
 *.py[cod]

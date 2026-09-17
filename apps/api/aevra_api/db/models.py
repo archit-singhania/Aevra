@@ -35,6 +35,26 @@ class User(TimestampMixin, Base):
     )
 
 
+class AccountDeletionRequest(TimestampMixin, Base):
+    __tablename__ = "account_deletion_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('requested', 'processing', 'completed', 'cancelled')",
+            name="valid_account_deletion_status",
+        ),
+        UniqueConstraint("user_id", "status", name="uq_active_account_deletion_request"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(16), default="requested")
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Organization(TimestampMixin, Base):
     __tablename__ = "organizations"
 
@@ -472,7 +492,9 @@ class SocialAccount(TimestampMixin, Base):
     external_account_id: Mapped[str] = mapped_column(String(300))
     display_name: Mapped[str] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(16), default="connected")
-    access_token_ref: Mapped[str] = mapped_column(String(512))
+    # Encrypted provider tokens are intentionally opaque to all API responses.
+    # 2 KiB accommodates refresh-token envelopes without truncation.
+    access_token_ref: Mapped[str] = mapped_column(String(2048))
     capabilities: Mapped[list[str]] = mapped_column(JSON, default=list)
     account_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     last_verified_at: Mapped[datetime | None] = mapped_column(

@@ -6,9 +6,16 @@ credentials or prompt state is kept in Celery payloads.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from services.workers.celery_app import celery_app
+
+from aevra_api.config import get_settings
+from aevra_api.db.models import ScheduledPost
+from aevra_api.db.session import SessionLocal
+from aevra_api.schemas.publishing import PublishRequest
+from aevra_api.services.publishing import PublishingService
 
 
 def _task(**kwargs: Any):
@@ -26,8 +33,49 @@ def _task(**kwargs: Any):
     retry_jitter=True,
     max_retries=5,
 )
-def dispatch_due_posts(_task_instance: Any) -> dict[str, str]:
-    return {"status": "accepted", "job": "dispatch_due_posts"}
+def dispatch_due_posts(_task_instance: Any) -> dict[str, str | int]:
+    """Claim and publish due scheduled posts idempotently."""
+    session = SessionLocal()
+    processed = 0
+    try:
+        due = list(
+            session.query(ScheduledPost)
+            .filter(
+                ScheduledPost.status == "scheduled",
+                ScheduledPost.scheduled_for <= datetime.now(UTC),
+            )
+            .order_by(ScheduledPost.scheduled_for)
+            .limit(25)
+            .all()
+        )
+        for item in due:
+            item.status = "processing"
+            item.attempts += 1
+            session.commit()
+            payload = item.payload if isinstance(item.payload, dict) else {}
+            try:
+                job = PublishingService(session, get_settings()).publish(
+                    item.created_by_user_id,
+                    item.workspace_id,
+                    PublishRequest(
+                        campaign_id=item.campaign_id,
+                        social_account_id=item.social_account_id,
+                        idempotency_key=f"scheduled:{item.idempotency_key}",
+                        text=str(payload.get("text", "")),
+                        media_urls=[str(url) for url in payload.get("media_urls", [])],
+                    ),
+                )
+                item.published_job_id = job.id
+                item.status = "published" if job.status in {"published", "verified"} else "failed"
+                item.error_message = job.error_message
+            except Exception as error:
+                item.status = "failed"
+                item.error_message = str(error)[:1000]
+            session.commit()
+            processed += 1
+        return {"status": "completed", "job": "dispatch_due_posts", "processed": processed}
+    finally:
+        session.close()
 
 
 @_task(

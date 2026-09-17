@@ -41,6 +41,7 @@ import {
   SoundToggle,
   TypewriterText,
   VoiceIndicator,
+  VoiceInputButton,
 } from "@/components/advanced-ui";
 import { GrainOverlay } from "@/components/background/grain-overlay";
 import { WebglBackground } from "@/components/background/webgl-background";
@@ -76,7 +77,8 @@ function handleGlow(event: MouseEvent<HTMLElement>) {
 }
 
 type View = "overview" | "campaigns" | "brain" | "media" | "publishing";
-const tokenKey = "vae.staging.access-token";
+const browserSession = "cookie";
+const legacyTokenKey = "vae.staging.access-token";
 const platforms: Array<{ id: Platform; label: string }> = [
   "linkedin",
   "instagram",
@@ -214,7 +216,9 @@ export function LiveWorkspace() {
     window.setTimeout(() => setThemeWipe(null), 760);
   }, [theme]);
   const reset = useCallback(() => {
-    window.localStorage.removeItem(tokenKey);
+    // Remove only the legacy pre-cookie token. New browser sessions are
+    // HTTP-only and therefore inaccessible to JavaScript by design.
+    window.localStorage.removeItem(legacyTokenKey);
     setToken(null);
     setUser(null);
     setWorkspace(null);
@@ -247,6 +251,12 @@ export function LiveWorkspace() {
         ]);
         const nextWorkspace = workspaces[0];
         if (!nextWorkspace) throw new Error("No active workspace found.");
+        // Let people enter the control room as soon as identity and workspace
+        // context are known. The secondary resources populate in the
+        // background rather than making sign-in feel like a full-page wait.
+        setUser(me);
+        setWorkspace(nextWorkspace);
+        setBusy(null);
         const [nextBrands, nextCampaigns, nextDocuments, nextAssets, nextAccounts, nextScheduled] =
           await Promise.all([
             api.brands(accessToken, nextWorkspace.id),
@@ -256,8 +266,6 @@ export function LiveWorkspace() {
             api.accounts(accessToken, nextWorkspace.id),
             api.scheduled(accessToken, nextWorkspace.id),
           ]);
-        setUser(me);
-        setWorkspace(nextWorkspace);
         setBrands(nextBrands);
         setCampaigns(nextCampaigns);
         setDocuments(nextDocuments);
@@ -278,9 +286,12 @@ export function LiveWorkspace() {
     [reset],
   );
   useEffect(() => {
-    const saved = window.localStorage.getItem(tokenKey);
-    if (saved) setToken(saved);
-    setHydrated(true);
+    window.localStorage.removeItem(legacyTokenKey);
+    api
+      .me(browserSession)
+      .then(() => setToken(browserSession))
+      .catch(() => setToken(null))
+      .finally(() => setHydrated(true));
   }, []);
   useEffect(() => {
     if (token) void load(token);
@@ -346,9 +357,10 @@ export function LiveWorkspace() {
               workspace_name: workspaceName,
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
             });
-      const accessToken = "token" in result ? result.token.access_token : result.access_token;
-      window.localStorage.setItem(tokenKey, accessToken);
-      setToken(accessToken);
+      // The API also returns a bearer token for native apps, but the browser
+      // intentionally uses the HTTP-only cookie set by the same response.
+      void result;
+      setToken(browserSession);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Authentication failed.");
     } finally {
@@ -468,7 +480,8 @@ export function LiveWorkspace() {
     if (!token || !asset.download_url) return;
     await run(`download-${asset.id}`, async () => {
       const response = await fetch(asset.download_url as string, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+        headers: token !== browserSession ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!response.ok) throw new Error("The asset download could not be completed.");
       const objectUrl = URL.createObjectURL(await response.blob());
@@ -636,14 +649,19 @@ export function LiveWorkspace() {
               <input
                 required
                 type="password"
-                minLength={mode === "register" ? 12 : 1}
+                minLength={1}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Your password"
               />
             </Field>
             <Button type="submit" className="live-full-button" disabled={busy === "auth"}>
-              <ArrowRight size={15} /> {mode === "login" ? "Enter workspace" : "Create workspace"}
+              <ArrowRight className={cn(busy === "auth" && "live-spin")} size={15} />
+              {busy === "auth"
+                ? "Opening workspace…"
+                : mode === "login"
+                  ? "Enter workspace"
+                  : "Create workspace"}
             </Button>
           </motion.form>
         </main>
@@ -778,12 +796,17 @@ export function LiveWorkspace() {
             />
           </Field>
           <Field label="Objective">
-            <textarea
-              required
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder="What should this campaign achieve?"
-            />
+            <div className="live-input-with-action">
+              <textarea
+                required
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                placeholder="What should this campaign achieve?"
+              />
+              <VoiceInputButton
+                onTranscript={(value) => setGoal((current) => `${current} ${value}`.trim())}
+              />
+            </div>
           </Field>
           <Field label="Product or service">
             <input
@@ -1272,7 +1295,11 @@ export function LiveWorkspace() {
                 <small>{user?.email}</small>
               </span>
             </div>
-            <button onClick={reset}>
+            <button
+              onClick={() => {
+                void api.logout().finally(reset);
+              }}
+            >
               <LogOut size={15} /> Sign out
             </button>
           </div>

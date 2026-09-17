@@ -6,6 +6,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 COPY apps/api/pyproject.toml ./pyproject.toml
 COPY apps/api/aevra_api ./aevra_api
+COPY services ./services
 RUN pip install --no-cache-dir .
 COPY alembic.ini ./alembic.ini
 COPY infrastructure/migrations ./infrastructure/migrations

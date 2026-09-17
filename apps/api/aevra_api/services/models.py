@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Iterator
 
 from sqlalchemy.orm import Session
 
@@ -39,6 +40,37 @@ class LocalModelService:
             messages.append(ChatMessage(role="system", content=request.system_prompt))
         messages.append(ChatMessage(role="user", content=request.prompt))
         return self.provider.generate(
+            GenerationRequest(
+                messages=messages,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                response_format=request.response_format,
+            )
+        )
+
+    def stream(
+        self,
+        user_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        request: LocalGenerateRequest,
+    ) -> Iterator[str]:
+        self._require_workspace(user_id, workspace_id)
+        messages = []
+        if request.system_prompt:
+            messages.append(ChatMessage(role="system", content=request.system_prompt))
+        messages.append(ChatMessage(role="user", content=request.prompt))
+        stream = getattr(self.provider, "stream", None)
+        if stream is None:
+            yield self.provider.generate(
+                GenerationRequest(
+                    messages=messages,
+                    temperature=request.temperature,
+                    max_tokens=request.max_tokens,
+                    response_format=request.response_format,
+                )
+            ).content
+            return
+        yield from stream(
             GenerationRequest(
                 messages=messages,
                 temperature=request.temperature,

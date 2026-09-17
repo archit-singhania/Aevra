@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 import httpx
 
 from aevra_api.ai.contracts import (
@@ -70,6 +72,31 @@ class OllamaLLMProvider:
             completion_tokens=body.get("eval_count"),
             metadata={"done": bool(body.get("done", True))},
         )
+
+    def stream(self, request: GenerationRequest) -> Iterator[str]:
+        """Yield Ollama's newline-delimited response chunks as they arrive."""
+        payload: dict[str, object] = {
+            "model": self.model_name,
+            "stream": True,
+            "messages": [
+                {"role": message.role, "content": message.content} for message in request.messages
+            ],
+            "options": {"temperature": request.temperature, "num_predict": request.max_tokens},
+        }
+        if request.response_format == "json":
+            payload["format"] = "json"
+        try:
+            with self.client.stream("POST", "/api/chat", json=payload) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line:
+                        continue
+                    body = __import__("json").loads(line)
+                    chunk = body.get("message", {}).get("content", "")
+                    if isinstance(chunk, str) and chunk:
+                        yield chunk
+        except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
+            raise ProviderUnavailableError("Local language model streaming is unavailable") from exc
 
 
 def build_llm_provider(settings: Settings) -> LLMProvider:

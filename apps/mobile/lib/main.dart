@@ -20,6 +20,7 @@ class AevraApp extends StatefulWidget {
 
 class _AevraAppState extends State<AevraApp> {
   late final AppState state;
+  bool darkMode = true;
 
   @override
   void initState() {
@@ -39,7 +40,7 @@ class _AevraAppState extends State<AevraApp> {
     return MaterialApp(
       title: 'Aevra',
       debugShowCheckedModeBanner: false,
-      theme: AevraTheme.dark,
+      theme: darkMode ? AevraTheme.dark : AevraTheme.light,
       home: AnimatedBuilder(
         animation: state,
         builder: (context, _) {
@@ -63,7 +64,12 @@ class _AevraAppState extends State<AevraApp> {
             transitionBuilder: (child, animation) =>
                 FadeTransition(opacity: animation, child: child),
             child: state.authenticated
-                ? MobileShell(key: const ValueKey('shell'), state: state)
+                ? MobileShell(
+                    key: const ValueKey('shell'),
+                    state: state,
+                    darkMode: darkMode,
+                    onToggleTheme: () => setState(() => darkMode = !darkMode),
+                  )
                 : AuthScreen(key: const ValueKey('auth'), state: state),
           );
         },
@@ -73,9 +79,11 @@ class _AevraAppState extends State<AevraApp> {
 }
 
 class MobileShell extends StatefulWidget {
-  const MobileShell({super.key, required this.state});
+  const MobileShell({super.key, required this.state, required this.darkMode, required this.onToggleTheme});
 
   final AppState state;
+  final bool darkMode;
+  final VoidCallback onToggleTheme;
 
   @override
   State<MobileShell> createState() => _MobileShellState();
@@ -104,7 +112,12 @@ class _MobileShellState extends State<MobileShell> {
           SafeArea(
             child: Column(
               children: [
-                _TopBar(title: _titles[index], state: widget.state),
+                _TopBar(
+                  title: _titles[index],
+                  state: widget.state,
+                  darkMode: widget.darkMode,
+                  onToggleTheme: widget.onToggleTheme,
+                ),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 260),
@@ -151,10 +164,12 @@ class _MobileShellState extends State<MobileShell> {
 
 /// Custom glass top bar — the mobile equivalent of the web app's `.topbar`.
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.state});
+  const _TopBar({required this.title, required this.state, required this.darkMode, required this.onToggleTheme});
 
   final String title;
   final AppState state;
+  final bool darkMode;
+  final VoidCallback onToggleTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -184,6 +199,12 @@ class _TopBar extends StatelessWidget {
           IconButton(
             onPressed: () => state.load(),
             icon: const Icon(Icons.refresh_outlined, size: 20),
+            color: AevraColors.muted,
+          ),
+          IconButton(
+            tooltip: darkMode ? 'Use light theme' : 'Use dark theme',
+            onPressed: onToggleTheme,
+            icon: Icon(darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 20),
             color: AevraColors.muted,
           ),
           IconButton(

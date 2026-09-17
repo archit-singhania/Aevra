@@ -11,7 +11,7 @@ class SocialAccountCreateRequest(BaseModel):
     platform: Platform
     external_account_id: str = Field(min_length=2, max_length=300)
     display_name: str = Field(min_length=1, max_length=200)
-    access_token_ref: str = Field(min_length=4, max_length=512)
+    access_token_ref: str = Field(min_length=4, max_length=1400)
     capabilities: list[str] = Field(default_factory=list, max_length=30)
 
 

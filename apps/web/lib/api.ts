@@ -162,12 +162,19 @@ export async function request<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(init.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  // Browser sessions use an HTTP-only cookie. Native clients can keep passing
+  // a bearer token; the sentinel is deliberately never serialized as a header.
+  if (token && token !== "cookie") headers.set("Authorization", `Bearer ${token}`);
   if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(apiUrl(path), { ...init, headers, cache: "no-store" });
+  const response = await fetch(apiUrl(path), {
+    ...init,
+    headers,
+    credentials: "include",
+    cache: "no-store",
+  });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
       detail?: string | Array<{ msg?: string }>;
@@ -184,6 +191,7 @@ export async function request<T>(
       response.status,
     );
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -207,6 +215,7 @@ export const api = {
       token: { access_token: string; expires_in: number };
     }>("/auth/register", undefined, { method: "POST", body: JSON.stringify(payload) }),
   me: (token: string) => request<User>("/auth/me", token),
+  logout: () => request<void>("/auth/logout", undefined, { method: "POST" }),
   workspaces: (token: string) => request<Workspace[]>("/workspaces", token),
   brands: (token: string, workspaceId: string) =>
     request<Brand[]>(`/workspaces/${workspaceId}/brands`, token),

@@ -91,4 +91,52 @@ class AevraTheme {
       ),
     );
   }
+
+  static ThemeData get light {
+    final base = ThemeData(
+      brightness: Brightness.light,
+      scaffoldBackgroundColor: const Color(0xFFF5F7F2),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF427A00),
+        onPrimary: Colors.white,
+        secondary: Color(0xFF6848B8),
+        tertiary: Color(0xFF167A86),
+        surface: Colors.white,
+        onSurface: Color(0xFF142016),
+        error: Color(0xFFB42318),
+      ),
+      useMaterial3: true,
+    );
+    final textTheme = GoogleFonts.interTextTheme(base.textTheme).apply(
+      bodyColor: const Color(0xFF142016),
+      displayColor: const Color(0xFF142016),
+    );
+    return base.copyWith(
+      textTheme: textTheme.copyWith(bodySmall: textTheme.bodySmall?.copyWith(color: const Color(0xFF566358))),
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: Colors.transparent,
+      dividerColor: const Color(0x1A142016),
+      cardTheme: CardThemeData(
+        color: Colors.white.withOpacity(0.88),
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0x1A142016)),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white.withOpacity(0.9),
+        indicatorColor: const Color(0x26427A00),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w600 : FontWeight.w500, color: selected ? const Color(0xFF315C00) : const Color(0xFF566358));
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(color: selected ? const Color(0xFF427A00) : const Color(0xFF566358), size: 22);
+        }),
+      ),
+    );
+  }
 }

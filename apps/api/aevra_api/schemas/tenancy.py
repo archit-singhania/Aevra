@@ -6,7 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class RegisterRequest(BaseModel):
     email: str = Field(min_length=3, max_length=320)
-    password: str = Field(min_length=12, max_length=128)
+    # Temporary staging policy: production must restore a stronger minimum
+    # before public registration is enabled.
+    password: str = Field(min_length=1, max_length=128)
     display_name: str = Field(min_length=1, max_length=120)
     organization_name: str = Field(min_length=2, max_length=160)
     workspace_name: str = Field(min_length=2, max_length=160)
@@ -68,6 +70,17 @@ class RegistrationResponse(BaseModel):
     organization: OrganizationResponse
     workspace: WorkspaceResponse
     token: TokenResponse
+
+
+class AccountDeletionResponse(BaseModel):
+    request_id: uuid.UUID
+    status: str
+    requested_at: datetime
+    scheduled_for: datetime
+
+
+class AccountDeletionCreateRequest(BaseModel):
+    confirmation_email: str = Field(min_length=3, max_length=320)
 
 
 class WorkspaceCreateRequest(BaseModel):

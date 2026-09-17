@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from aevra_api.api.routes.auth import router as auth_router
@@ -20,7 +20,7 @@ from aevra_api.domain.errors import (
     ProviderUnavailableError,
     UnsupportedContentError,
 )
-from aevra_api.observability import RequestContextMiddleware
+from aevra_api.observability import RequestContextMiddleware, metrics
 
 
 class HealthResponse(BaseModel):
@@ -98,3 +98,25 @@ def handle_generation_error(_request: Request, exc: GenerationError) -> JSONResp
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
     return HealthResponse(status="ok", service="aevra-api", phase=12)
+
+
+@app.get("/metrics", include_in_schema=False)
+def prometheus_metrics() -> PlainTextResponse:
+    """A dependency-free Prometheus scrape endpoint for a first monitoring layer."""
+    lines = [
+        "# HELP aevra_http_requests_total HTTP requests handled",
+        "# TYPE aevra_http_requests_total counter",
+    ]
+    for key, value in sorted(metrics.requests.items()):
+        method, path = key.split(" ", 1)
+        lines.append(f'aevra_http_requests_total{{method="{method}",path="{path}"}} {value}')
+    lines.extend(
+        [
+            "# HELP aevra_http_failures_total HTTP 5xx responses",
+            "# TYPE aevra_http_failures_total counter",
+        ]
+    )
+    for key, value in sorted(metrics.failures.items()):
+        method, path = key.split(" ", 1)
+        lines.append(f'aevra_http_failures_total{{method="{method}",path="{path}"}} {value}')
+    return PlainTextResponse("\n".join(lines) + "\n")

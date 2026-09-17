@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,7 +11,7 @@ def normalize_database_url(database_url: str) -> str:
     """Use the psycopg 3 driver for common managed-Postgres URL formats."""
     for prefix in ("postgres://", "postgresql://", "postgresql+psycopg2://"):
         if database_url.startswith(prefix):
-            return f"postgresql+psycopg://{database_url[len(prefix):]}"
+            return f"postgresql+psycopg://{database_url[len(prefix) :]}"
     return database_url
 
 
@@ -20,6 +21,12 @@ class Settings(BaseSettings):
     env: str = "development"
     secret_key: str = Field(default=DEFAULT_SECRET, min_length=32)
     access_token_minutes: int = Field(default=30, ge=5, le=1440)
+    session_cookie_name: str = "aevra_session"
+    session_cookie_secure: bool | None = None
+    session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    token_vault_key: str | None = Field(default=None, min_length=32)
+    auth_rate_limit_attempts: int = Field(default=10, ge=3, le=100)
+    auth_rate_limit_window_seconds: int = Field(default=60, ge=10, le=3600)
     database_url: str = "sqlite:///./aevra.db"
     seed_email: str = "owner@aevra.local"
     seed_password: str = Field(default="AevraLocalOnly!2026", min_length=12)
@@ -50,6 +57,13 @@ class Settings(BaseSettings):
     minio_secret_key: str = "aevra-development-only"
     minio_bucket: str = "aevra-assets"
     minio_secure: bool = False
+
+    @property
+    def use_secure_session_cookie(self) -> bool:
+        """Use HTTPS-only cookies by default outside local development."""
+        if self.session_cookie_secure is not None:
+            return self.session_cookie_secure
+        return self.env.lower() in {"staging", "production"}
 
     @model_validator(mode="after")
     def reject_development_secret_in_production(self) -> "Settings":

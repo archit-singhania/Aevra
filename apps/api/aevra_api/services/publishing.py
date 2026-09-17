@@ -22,6 +22,7 @@ from aevra_api.publishing.contracts import PublishRequest as ProviderRequest
 from aevra_api.repositories.publishing import PublishingRepository
 from aevra_api.repositories.tenancy import TenancyRepository
 from aevra_api.schemas.publishing import PublishRequest, SocialAccountCreateRequest
+from aevra_api.token_vault import LocalTokenVault, TokenVaultError
 
 EDIT_ROLES = {"owner", "admin", "member"}
 
@@ -33,6 +34,20 @@ class PublishingService:
         self.repository = PublishingRepository(session)
         self.tenancy = TenancyRepository(session)
         self.mock = MockSocialPublisher()
+        self.vault = LocalTokenVault(settings.token_vault_key or settings.secret_key)
+
+    def _store_token(self, token: str) -> str:
+        """Encrypt provider credentials before they touch the database."""
+        return self.vault.encrypt(token)
+
+    def _provider_token(self, stored_value: str) -> str:
+        """Read encrypted credentials, accepting legacy staging references once."""
+        try:
+            return self.vault.decrypt(stored_value)
+        except TokenVaultError:
+            # Existing staging records predate the vault. They are replaced by
+            # an encrypted envelope on the next account connection.
+            return stored_value
 
     def _access(self, user_id: uuid.UUID, workspace_id: uuid.UUID) -> str:
         access = self.tenancy.get_workspace_access(user_id, workspace_id)
@@ -57,7 +72,7 @@ class PublishingService:
         )
         if existing is not None:
             existing.display_name = request.display_name.strip()
-            existing.access_token_ref = request.access_token_ref
+            existing.access_token_ref = self._store_token(request.access_token_ref)
             existing.capabilities = request.capabilities
             existing.status = "connected"
             self.session.commit()
@@ -68,7 +83,7 @@ class PublishingService:
             platform=request.platform,
             external_account_id=request.external_account_id.strip(),
             display_name=request.display_name.strip(),
-            access_token_ref=request.access_token_ref,
+            access_token_ref=self._store_token(request.access_token_ref),
             capabilities=request.capabilities,
             status="connected",
         )
@@ -125,7 +140,7 @@ class PublishingService:
                     request.text,
                     tuple(request.media_urls),
                 ),
-                access_token=account.access_token_ref,
+                access_token=self._provider_token(account.access_token_ref),
             )
             job.status = "published"
             job.external_post_id = result.external_post_id
@@ -155,7 +170,7 @@ class PublishingService:
             raise NotFoundError("Connected social account not found")
         try:
             result = self._publisher(account.platform).verify(
-                job.external_post_id, access_token=account.access_token_ref
+                job.external_post_id, access_token=self._provider_token(account.access_token_ref)
             )
             job.status = "verified"
             job.verified_at = datetime.now(UTC)

@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
@@ -53,3 +54,5 @@ class LLMProvider(Protocol):
     def status(self) -> ProviderStatus: ...
 
     def generate(self, request: GenerationRequest) -> GenerationResult: ...
+
+    def stream(self, request: GenerationRequest) -> Iterator[str]: ...

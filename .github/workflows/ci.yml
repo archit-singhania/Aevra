@@ -33,6 +33,7 @@ jobs:
       - run: ruff check .
       - run: mypy aevra_api
       - run: pytest
+      - run: python -m compileall -q ../../services
       - run: alembic -c ../../alembic.ini upgrade head
         env:
           AEVRA_DATABASE_URL: sqlite:///./ci-migration.db

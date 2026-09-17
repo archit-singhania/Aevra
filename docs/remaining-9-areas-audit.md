@@ -1,5 +1,8 @@
 # Remaining nine areas — implementation audit
 
+> Status refreshed 17 September 2026. The integrated hardening pass is tracked in
+> [production-readiness.md](production-readiness.md); this file preserves the original phase-by-phase notes.
+
 The nine production extensions now have free/self-hosted foundations. External platform
 approval, credentials, hosted GPU time, and electricity are not software features and remain
 deployment responsibilities.
