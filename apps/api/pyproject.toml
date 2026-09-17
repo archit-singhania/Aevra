@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "aevra-api"
 version = "0.1.0"
@@ -31,6 +35,15 @@ dev = [
   "mypy>=1.17,<2",
   "reportlab>=4.4,<5",
 ]
+
+# The API image intentionally installs the application package and the shared
+# worker/service namespace from the repository root. Explicit discovery avoids
+# setuptools' flat-layout ambiguity when both top-level namespaces are copied
+# into the Docker build context.
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["aevra_api*", "services*"]
+namespaces = true
 
 [tool.ruff]
 line-length = 100
