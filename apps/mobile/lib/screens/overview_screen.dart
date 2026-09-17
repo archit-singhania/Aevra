@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
 import '../widgets/glass_card.dart';
@@ -25,7 +26,13 @@ class OverviewScreen extends StatelessWidget {
             children: [
               Text(
                 'Good to see you, $firstName.',
-                style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w600, letterSpacing: -0.02, height: 1.1),
+                style: GoogleFonts.fraunces(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.015,
+                  height: 1.1,
+                  color: AevraColors.text,
+                ),
               ),
               const SizedBox(height: 8),
               const Align(

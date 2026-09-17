@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
 import '../widgets/glass_card.dart';
@@ -35,7 +36,7 @@ class ScheduleScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
-              const Text('Schedule', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.02)),
+              Text('Schedule', style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w500, letterSpacing: -0.015, color: AevraColors.text)),
               const SizedBox(height: 4),
               Text('${scheduled.length} scheduled posts', style: const TextStyle(fontSize: 12, color: AevraColors.muted2)),
               const SizedBox(height: 18),

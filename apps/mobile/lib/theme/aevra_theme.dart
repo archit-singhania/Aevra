@@ -7,16 +7,21 @@ import 'package:google_fonts/google_fonts.dart';
 class AevraColors {
   AevraColors._();
 
-  static const bg = Color(0xFF07090D);
-  static const panel = Color(0xFF0D1016);
-  static const line = Color(0x16FFFFFF);
-  static const lineStrong = Color(0x24FFFFFF);
-  static const text = Color(0xFFF4F6F2);
-  static const muted = Color(0xFF8D949F);
-  static const muted2 = Color(0xFF626A76);
-  static const lime = Color(0xFFB5FF5E);
-  static const violet = Color(0xFFAA8CFF);
-  static const cyan = Color(0xFF65DFEE);
+  static const bg = Color(0xFF0A0B0D);
+  static const panel = Color(0xFF111318);
+  static const line = Color(0x0FC4BAA8);
+  static const lineStrong = Color(0x1FC4BAA8);
+  static const text = Color(0xFFEFECE4);
+  static const muted = Color(0xFF8E8A80);
+  static const muted2 = Color(0xFF5C584F);
+  // Champagne-brass primary accent (was neon lime).
+  static const lime = Color(0xFFC9A45C);
+  // Deep ink-emerald secondary accent (was neon violet).
+  static const violet = Color(0xFF3F5D52);
+  // Platinum tertiary accent (was neon cyan).
+  static const cyan = Color(0xFFB8BEC7);
+  // Dark ink text used on top of the brass accent — mirrors web's #171208.
+  static const onAccent = Color(0xFF171208);
 }
 
 class AevraTheme {
@@ -29,7 +34,7 @@ class AevraTheme {
       colorScheme: const ColorScheme.dark(
         brightness: Brightness.dark,
         primary: AevraColors.lime,
-        onPrimary: Color(0xFF07100A),
+        onPrimary: AevraColors.onAccent,
         secondary: AevraColors.violet,
         tertiary: AevraColors.cyan,
         surface: AevraColors.panel,
@@ -43,13 +48,18 @@ class AevraTheme {
       bodyColor: AevraColors.text,
       displayColor: AevraColors.text,
     );
+    // Serif display pairing mirrors the web app's Fraunces headings for a
+    // premium editorial feel on top-level titles only; body/UI stays Inter.
+    final serifDisplay = GoogleFonts.fraunces(
+      fontWeight: FontWeight.w500,
+      letterSpacing: -0.015,
+      color: AevraColors.text,
+    );
 
     return base.copyWith(
       textTheme: textTheme.copyWith(
-        headlineSmall: textTheme.headlineSmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.02,
-        ),
+        headlineSmall: serifDisplay.copyWith(fontSize: textTheme.headlineSmall?.fontSize),
+        titleLarge: serifDisplay.copyWith(fontSize: textTheme.titleLarge?.fontSize),
         titleMedium: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         bodySmall: textTheme.bodySmall?.copyWith(color: AevraColors.muted),
       ),
@@ -68,7 +78,7 @@ class AevraTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: AevraColors.line),
         ),
       ),

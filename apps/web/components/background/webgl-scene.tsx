@@ -74,25 +74,25 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec2 uv = vUv;
     vec2 aspectUv = (uv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) + 0.5;
 
-    float t = uTime * 0.035;
+    float t = uTime * 0.024;
 
-    float n1 = snoise(vec3(aspectUv * 1.4, t));
-    float n2 = snoise(vec3(aspectUv * 2.2 + 5.0, t * 1.3));
+    float n1 = snoise(vec3(aspectUv * 1.3, t));
+    float n2 = snoise(vec3(aspectUv * 2.0 + 5.0, t * 1.15));
     float field = n1 * 0.65 + n2 * 0.35;
 
     vec3 bg = vec3(0.027, 0.035, 0.051);
-    vec3 lime = vec3(0.710, 1.0, 0.369);
-    vec3 violet = vec3(0.667, 0.549, 1.0);
-    vec3 cyan = vec3(0.396, 0.875, 0.933);
+    vec3 brass = vec3(0.788, 0.643, 0.361);
+    vec3 inkEmerald = vec3(0.247, 0.365, 0.322);
+    vec3 platinum = vec3(0.722, 0.745, 0.780);
 
-    float limeMask = smoothstep(0.18, 0.62, field) * smoothstep(0.05, 0.55, 1.0 - length(aspectUv - vec2(0.72, 0.28)));
-    float violetMask = smoothstep(0.15, 0.6, -field + 0.15) * smoothstep(0.05, 0.65, 1.0 - length(aspectUv - vec2(0.22, 0.78)));
-    float cyanMask = smoothstep(0.2, 0.58, field * 0.6 + 0.2) * smoothstep(0.05, 0.6, 1.0 - length(aspectUv - vec2(0.5, 0.5)));
+    float brassMask = smoothstep(0.18, 0.62, field) * smoothstep(0.05, 0.55, 1.0 - length(aspectUv - vec2(0.72, 0.28)));
+    float emeraldMask = smoothstep(0.15, 0.6, -field + 0.15) * smoothstep(0.05, 0.65, 1.0 - length(aspectUv - vec2(0.22, 0.78)));
+    float platinumMask = smoothstep(0.2, 0.58, field * 0.6 + 0.2) * smoothstep(0.05, 0.6, 1.0 - length(aspectUv - vec2(0.5, 0.5)));
 
     vec3 color = bg;
-    color += lime * limeMask * 0.16;
-    color += violet * violetMask * 0.14;
-    color += cyan * cyanMask * 0.08;
+    color += brass * brassMask * 0.10;
+    color += inkEmerald * emeraldMask * 0.09;
+    color += platinum * platinumMask * 0.05;
 
     float vignette = smoothstep(1.05, 0.25, length(aspectUv - 0.5));
     color *= mix(0.75, 1.0, vignette);

@@ -21,14 +21,14 @@ class GlassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(12),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
             color: AevraColors.panel.withOpacity(0.6),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: borderColor ?? AevraColors.line),
           ),
           child: child,

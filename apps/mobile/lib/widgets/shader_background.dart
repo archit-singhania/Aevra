@@ -103,7 +103,7 @@ class _StaticFallback extends StatelessWidget {
         gradient: RadialGradient(
           center: Alignment(0.4, -0.6),
           radius: 1.2,
-          colors: [Color(0x14B5FF5E), Color(0x00070911)],
+          colors: [Color(0x14C9A45C), Color(0x000A0B0D)],
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
@@ -88,9 +89,15 @@ class _AuthScreenState extends State<AuthScreen> {
                         ],
                       ),
                       const SizedBox(height: 26),
-                      const Text(
+                      Text(
                         'Make every campaign feel\nlike your sharpest team\nmember made it.',
-                        style: TextStyle(fontSize: 27, fontWeight: FontWeight.w600, height: 1.1, letterSpacing: -0.02),
+                        style: GoogleFonts.fraunces(
+                          fontSize: 27,
+                          fontWeight: FontWeight.w500,
+                          height: 1.1,
+                          letterSpacing: -0.015,
+                          color: AevraColors.text,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       const Text(
@@ -112,7 +119,11 @@ class _AuthScreenState extends State<AuthScreen> {
                             const SizedBox(height: 18),
                             Text(
                               isLogin ? 'Welcome back' : 'Start your Aevra workspace',
-                              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+                              style: GoogleFonts.fraunces(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w500,
+                                color: AevraColors.text,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             if (widget.state.error != null) ...[
@@ -137,7 +148,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 onPressed: widget.state.loading ? null : _submit,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AevraColors.lime,
-                                  foregroundColor: const Color(0xFF07100A),
+                                  foregroundColor: AevraColors.onAccent,
                                   padding: const EdgeInsets.symmetric(vertical: 14),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
                                 ),
@@ -145,7 +156,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     ? const SizedBox(
                                         width: 18,
                                         height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF07100A)),
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: AevraColors.onAccent),
                                       )
                                     : Text(
                                         isLogin ? 'Enter workspace' : 'Create workspace',

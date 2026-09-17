@@ -151,7 +151,7 @@ export function ParticleField({ pulse = 0 }: { pulse?: number }) {
         particle.x += particle.vx;
         particle.y += particle.vy;
         particle.life -= 0.012;
-        context.fillStyle = `rgba(181,255,94,${particle.life * 0.42})`;
+        context.fillStyle = `rgba(201,164,92,${particle.life * 0.42})`;
         context.fillRect(particle.x, particle.y, 1.5, 1.5);
       });
       frame = window.requestAnimationFrame(draw);

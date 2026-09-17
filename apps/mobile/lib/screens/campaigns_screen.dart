@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../api/models.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
@@ -36,7 +37,7 @@ class CampaignsScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
-              const Text('Campaigns', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: -0.02)),
+              Text('Campaigns', style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w500, letterSpacing: -0.015, color: AevraColors.text)),
               const SizedBox(height: 4),
               Text('${state.campaigns.length} in this workspace', style: const TextStyle(fontSize: 12, color: AevraColors.muted2)),
               const SizedBox(height: 18),
@@ -241,7 +242,7 @@ class _CampaignDetailSheet extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: AevraColors.lime, foregroundColor: const Color(0xFF07100A)),
+                      style: FilledButton.styleFrom(backgroundColor: AevraColors.lime, foregroundColor: AevraColors.onAccent),
                       onPressed: () {
                         HapticFeedback.mediumImpact();
                         state.decide(campaign.id, 'approve');
