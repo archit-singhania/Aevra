@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui' show ImageFilter;
 import 'screens/analytics_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/campaigns_screen.dart';
@@ -7,6 +8,8 @@ import 'screens/overview_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'state/app_state.dart';
 import 'theme/aevra_theme.dart';
+import 'widgets/advanced_ui.dart';
+import 'widgets/aevra_logo.dart';
 import 'widgets/shader_background.dart';
 
 void main() => runApp(const AevraApp());
@@ -20,6 +23,8 @@ class AevraApp extends StatefulWidget {
 
 class _AevraAppState extends State<AevraApp> {
   late final AppState state;
+  final AevraSound sound = AevraSound();
+  final ParticlePulse pulse = ParticlePulse();
   bool darkMode = true;
 
   @override
@@ -27,11 +32,14 @@ class _AevraAppState extends State<AevraApp> {
     super.initState();
     state = AppState();
     state.hydrate();
+    sound.hydrate();
   }
 
   @override
   void dispose() {
     state.dispose();
+    sound.dispose();
+    pulse.dispose();
     super.dispose();
   }
 
@@ -41,21 +49,15 @@ class _AevraAppState extends State<AevraApp> {
       title: 'Aevra',
       debugShowCheckedModeBanner: false,
       theme: darkMode ? AevraTheme.dark : AevraTheme.light,
+      // Wrapped via `builder`, not `home`, so dialogs, bottom sheets and
+      // overlay entries pushed onto the Navigator can still reach it —
+      // anything under `home` alone would be invisible to those routes.
+      builder: (context, child) => AevraServices(sound: sound, pulse: pulse, child: child!),
       home: AnimatedBuilder(
         animation: state,
         builder: (context, _) {
           if (!state.hydrated) {
-            return Scaffold(
-              backgroundColor: AevraColors.bg,
-              body: Stack(
-                children: [
-                  const Positioned.fill(child: RepaintBoundary(child: ShaderBackground())),
-                  const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AevraColors.lime),
-                  ),
-                ],
-              ),
-            );
+            return const _BootScreen();
           }
           return AnimatedSwitcher(
             duration: const Duration(milliseconds: 320),
@@ -67,6 +69,8 @@ class _AevraAppState extends State<AevraApp> {
                 ? MobileShell(
                     key: const ValueKey('shell'),
                     state: state,
+                    sound: sound,
+                    pulse: pulse,
                     darkMode: darkMode,
                     onToggleTheme: () => setState(() => darkMode = !darkMode),
                   )
@@ -78,10 +82,49 @@ class _AevraAppState extends State<AevraApp> {
   }
 }
 
+/// Shown while secure storage is being read. Uses the brand mark and a
+/// shimmer rather than a bare spinner, so the very first frame already
+/// looks like the product (#4, and stands in for the native splash until
+/// the platform folders and icon assets exist).
+class _BootScreen extends StatelessWidget {
+  const _BootScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AevraColors.bg,
+      body: Stack(
+        children: [
+          const Positioned.fill(child: RepaintBoundary(child: ShaderBackground())),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                AevraMark(size: 44),
+                SizedBox(height: 20),
+                SizedBox(width: 120, child: ShimmerBox(height: 6, radius: 999)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class MobileShell extends StatefulWidget {
-  const MobileShell({super.key, required this.state, required this.darkMode, required this.onToggleTheme});
+  const MobileShell({
+    super.key,
+    required this.state,
+    required this.sound,
+    required this.pulse,
+    required this.darkMode,
+    required this.onToggleTheme,
+  });
 
   final AppState state;
+  final AevraSound sound;
+  final ParticlePulse pulse;
   final bool darkMode;
   final VoidCallback onToggleTheme;
 
@@ -91,6 +134,141 @@ class MobileShell extends StatefulWidget {
 
 class _MobileShellState extends State<MobileShell> {
   int index = 0;
+  final GlobalKey _themeButtonKey = GlobalKey();
+  OverlayEntry? _wipeEntry;
+  bool _tourChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowTour());
+  }
+
+  @override
+  void dispose() {
+    _wipeEntry?.remove();
+    _wipeEntry = null;
+    super.dispose();
+  }
+
+  /// #8 — first-run tour, gated on a SharedPreferences flag.
+  Future<void> _maybeShowTour() async {
+    if (_tourChecked) return;
+    _tourChecked = true;
+    if (await hasCompletedTour()) return;
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) =>
+          OnboardingSheet(onDone: () => Navigator.of(dialogContext).pop()),
+    );
+  }
+
+  /// #9 — theme wipe. The circle grows from the toggle button, the theme
+  /// flips while the screen is fully covered, then the cover fades out.
+  void _toggleThemeWithWipe() {
+    if (_wipeEntry != null) return; // already mid-wipe
+    widget.sound.tap();
+
+    final overlay = Overlay.of(context);
+    final box = _themeButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    final center = box == null
+        ? MediaQuery.of(context).size.center(Offset.zero)
+        : box.localToGlobal(box.size.center(Offset.zero));
+
+    if (reduceMotion(context)) {
+      widget.onToggleTheme();
+      return;
+    }
+
+    final entry = OverlayEntry(
+      builder: (_) => ThemeWipeOverlay(
+        center: center,
+        toDark: !widget.darkMode,
+        onMidpoint: widget.onToggleTheme,
+        onComplete: () {
+          _wipeEntry?.remove();
+          _wipeEntry = null;
+        },
+      ),
+    );
+    _wipeEntry = entry;
+    overlay.insert(entry);
+  }
+
+  /// #5 — command palette, the mobile counterpart of web's ⌘K.
+  void _openCommandPalette() {
+    widget.sound.tap();
+    showCommandPalette(context, [
+      CommandAction(
+        label: 'Go to Overview',
+        hint: 'Workspace summary and recent campaigns',
+        icon: Icons.space_dashboard_outlined,
+        run: () => _go(0),
+      ),
+      CommandAction(
+        label: 'Go to Campaigns',
+        hint: 'Review queue and approvals',
+        icon: Icons.auto_awesome_outlined,
+        run: () => _go(1),
+      ),
+      CommandAction(
+        label: 'Go to Schedule',
+        hint: 'Upcoming scheduled posts',
+        icon: Icons.schedule_outlined,
+        run: () => _go(2),
+      ),
+      CommandAction(
+        label: 'Go to Analytics',
+        hint: 'Approval rate and workspace signal',
+        icon: Icons.insights_outlined,
+        run: () => _go(3),
+      ),
+      CommandAction(
+        label: 'Refresh workspace',
+        hint: 'Re-fetch everything from the API',
+        icon: Icons.refresh_outlined,
+        run: () {
+          widget.state.load();
+          widget.sound.tap();
+        },
+      ),
+      CommandAction(
+        label: widget.darkMode ? 'Switch to light theme' : 'Switch to dark theme',
+        hint: 'Animated theme wipe',
+        icon: widget.darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+        run: _toggleThemeWithWipe,
+      ),
+      CommandAction(
+        label: widget.sound.enabled ? 'Mute feedback sounds' : 'Unmute feedback sounds',
+        hint: 'Ambient chime on create and approve',
+        icon: widget.sound.enabled ? Icons.volume_up_outlined : Icons.volume_off_outlined,
+        run: () => widget.sound.toggle(),
+      ),
+      CommandAction(
+        label: 'Replay the tour',
+        hint: 'Show the three-step walkthrough again',
+        icon: Icons.school_outlined,
+        run: () async {
+          await resetTour();
+          _tourChecked = false;
+          await _maybeShowTour();
+        },
+      ),
+      CommandAction(
+        label: 'Sign out',
+        hint: 'Clear the stored access token',
+        icon: Icons.logout_outlined,
+        run: () => widget.state.signOut(),
+      ),
+    ]);
+  }
+
+  void _go(int next) {
+    HapticFeedback.selectionClick();
+    setState(() => index = next);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +293,11 @@ class _MobileShellState extends State<MobileShell> {
                 _TopBar(
                   title: _titles[index],
                   state: widget.state,
+                  sound: widget.sound,
                   darkMode: widget.darkMode,
-                  onToggleTheme: widget.onToggleTheme,
+                  themeButtonKey: _themeButtonKey,
+                  onToggleTheme: _toggleThemeWithWipe,
+                  onOpenPalette: _openCommandPalette,
                 ),
                 Expanded(
                   child: AnimatedSwitcher(
@@ -124,13 +305,12 @@ class _MobileShellState extends State<MobileShell> {
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
                     transitionBuilder: (child, animation) {
-                      final fade = animation;
                       final slide = Tween<Offset>(
                         begin: const Offset(0, 0.02),
                         end: Offset.zero,
                       ).animate(animation);
                       return FadeTransition(
-                        opacity: fade,
+                        opacity: animation,
                         child: SlideTransition(position: slide, child: child),
                       );
                     },
@@ -140,21 +320,35 @@ class _MobileShellState extends State<MobileShell> {
               ],
             ),
           ),
+          // #3 — particle burst on approve/reject/create. Sits above content
+          // but ignores pointers, and paints nothing while idle.
+          Positioned.fill(child: ParticleField(pulse: widget.pulse)),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (value) {
-          HapticFeedback.selectionClick();
-          setState(() => index = value);
-        },
-        backgroundColor: Colors.transparent,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.space_dashboard_outlined), label: 'Overview'),
-          NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'Campaigns'),
-          NavigationDestination(icon: Icon(Icons.schedule_outlined), label: 'Schedule'),
-          NavigationDestination(icon: Icon(Icons.insights_outlined), label: 'Analytics'),
-        ],
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 19, sigmaY: 19),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AevraColors.panel.withOpacity(0.76),
+              border: const Border(top: BorderSide(color: AevraColors.line)),
+            ),
+            child: NavigationBar(
+              selectedIndex: index,
+              onDestinationSelected: (value) {
+                widget.sound.tap();
+                setState(() => index = value);
+              },
+              backgroundColor: Colors.transparent,
+              destinations: const [
+                NavigationDestination(icon: Icon(Icons.space_dashboard_outlined), label: 'Overview'),
+                NavigationDestination(icon: Icon(Icons.auto_awesome_outlined), label: 'Campaigns'),
+                NavigationDestination(icon: Icon(Icons.schedule_outlined), label: 'Schedule'),
+                NavigationDestination(icon: Icon(Icons.insights_outlined), label: 'Analytics'),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -164,51 +358,69 @@ class _MobileShellState extends State<MobileShell> {
 
 /// Custom glass top bar — the mobile equivalent of the web app's `.topbar`.
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.state, required this.darkMode, required this.onToggleTheme});
+  const _TopBar({
+    required this.title,
+    required this.state,
+    required this.sound,
+    required this.darkMode,
+    required this.themeButtonKey,
+    required this.onToggleTheme,
+    required this.onOpenPalette,
+  });
 
   final String title;
   final AppState state;
+  final AevraSound sound;
   final bool darkMode;
+  final GlobalKey themeButtonKey;
   final VoidCallback onToggleTheme;
+  final VoidCallback onOpenPalette;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
       child: Row(
         children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              border: Border.all(color: AevraColors.lime.withOpacity(0.55)),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(7),
-                topRight: Radius.circular(7),
-                bottomRight: Radius.circular(11),
-                bottomLeft: Radius.circular(7),
-              ),
+          const AevraMark(size: 26),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.01),
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.01),
-          ),
           const Spacer(),
+          // #6 — the AI orb now reflects real request state instead of
+          // idling forever: it spins while the workspace is loading.
+          AnimatedBuilder(
+            animation: state,
+            builder: (context, _) => AiOrb(
+              size: 26,
+              state: state.loading ? AiOrbState.thinking : AiOrbState.idle,
+            ),
+          ),
+          const SizedBox(width: 4),
           IconButton(
-            onPressed: () => state.load(),
-            icon: const Icon(Icons.refresh_outlined, size: 20),
+            tooltip: 'Commands',
+            onPressed: onOpenPalette,
+            icon: const Icon(Icons.search_rounded, size: 20),
             color: AevraColors.muted,
           ),
           IconButton(
+            key: themeButtonKey,
             tooltip: darkMode ? 'Use light theme' : 'Use dark theme',
             onPressed: onToggleTheme,
             icon: Icon(darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 20),
             color: AevraColors.muted,
           ),
           IconButton(
-            onPressed: () => state.signOut(),
+            tooltip: 'Sign out',
+            onPressed: () {
+              sound.tap();
+              state.signOut();
+            },
             icon: const Icon(Icons.logout_outlined, size: 20),
             color: AevraColors.muted,
           ),

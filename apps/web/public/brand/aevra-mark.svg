@@ -1,0 +1,22 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- gradientUnits="userSpaceOnUse" is deliberate. The crossbar below is a
+         horizontal line, so its object bounding box has zero height; with the
+         default objectBoundingBox units the gradient degenerates and the
+         crossbar paints nothing, turning the "A" into a bare lambda. -->
+    <linearGradient id="brass" gradientUnits="userSpaceOnUse" x1="40" y1="40" x2="216" y2="216">
+      <stop offset="0%" stop-color="#e8d3a6"/>
+      <stop offset="52%" stop-color="#c9a45c"/>
+      <stop offset="100%" stop-color="#8f6d33"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(128,128) rotate(-32) translate(-128,-128)">
+    <rect x="45" y="45" width="166" height="166" rx="42"
+          fill="none" stroke="url(#brass)" stroke-width="9.5" stroke-linecap="round"/>
+  </g>
+  <g stroke="url(#brass)" stroke-linecap="round" fill="none">
+    <line x1="128" y1="71.5" x2="83.5" y2="187.5" stroke-width="8"/>
+    <line x1="128" y1="71.5" x2="172.5" y2="187.5" stroke-width="8"/>
+    <line x1="104" y1="149" x2="152" y2="149" stroke-width="6.5"/>
+  </g>
+</svg>

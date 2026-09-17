@@ -53,8 +53,18 @@ export function AiOrb({ state = "idle" }: { state?: "idle" | "thinking" | "succe
 export function TypewriterText({ text, speed = 18 }: { text: string; speed?: number }) {
   const [visible, setVisible] = useState("");
   useEffect(() => {
+    if (!text) {
+      setVisible("");
+      return;
+    }
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      setVisible(text);
+      return;
+    }
     setVisible("");
-    if (!text) return;
     let index = 0;
     const timer = window.setInterval(() => {
       index += 1;

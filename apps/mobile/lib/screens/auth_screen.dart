@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
-import '../widgets/glass_card.dart';
+import '../widgets/aevra_logo.dart';
+import '../widgets/depth.dart';
 import '../widgets/shader_background.dart';
 
 /// The mobile counterpart of the web app's `.live-auth` screen — same
@@ -66,36 +67,15 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 26,
-                            height: 26,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: AevraColors.lime.withOpacity(0.55)),
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(7),
-                                topRight: Radius.circular(7),
-                                bottomRight: Radius.circular(11),
-                                bottomLeft: Radius.circular(7),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'AEVRA',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: 3),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 26),
+                      const AevraWordmark(markSize: 30, fontSize: 18),
+                      const SizedBox(height: 30),
                       Text(
                         'Make every campaign feel\nlike your sharpest team\nmember made it.',
                         style: GoogleFonts.fraunces(
-                          fontSize: 27,
+                          fontSize: 32,
                           fontWeight: FontWeight.w500,
-                          height: 1.1,
-                          letterSpacing: -0.015,
+                          height: 1.06,
+                          letterSpacing: -0.025,
                           color: AevraColors.text,
                         ),
                       ),
@@ -105,7 +85,16 @@ class _AuthScreenState extends State<AuthScreen> {
                         style: TextStyle(fontSize: 13, height: 1.5, color: AevraColors.muted),
                       ),
                       const SizedBox(height: 28),
-                      GlassCard(
+                      // The one surface on this screen, so it gets the top
+                      // tier — but no tilt. A tap-down tilt recogniser here
+                      // would enter the gesture arena against every TextField
+                      // inside it, which risks taps not reliably focusing a
+                      // field. Depth on a form isn't worth that.
+                      GlassSurface(
+                        elevation: GlassElevation.lifted,
+                        radius: 16,
+                        padding: const EdgeInsets.all(20),
+                        adaptive: false,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

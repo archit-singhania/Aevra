@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../api/models.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
+import '../widgets/advanced_ui.dart';
+import '../widgets/depth.dart';
 import '../widgets/glass_card.dart';
 
 class CampaignsScreen extends StatelessWidget {
@@ -32,28 +34,48 @@ class CampaignsScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: state,
       builder: (context, _) {
-        return RefreshIndicator(
+        return AdaptiveGlassScroll(
+          child: RefreshIndicator(
           onRefresh: state.load,
+          color: AevraColors.lime,
+          backgroundColor: AevraColors.panel,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
-              Text('Campaigns', style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w500, letterSpacing: -0.015, color: AevraColors.text)),
-              const SizedBox(height: 4),
-              Text('${state.campaigns.length} in this workspace', style: const TextStyle(fontSize: 12, color: AevraColors.muted2)),
+              ParallaxLayer(
+                depth: -1.4,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Campaigns', style: GoogleFonts.fraunces(fontSize: 28, fontWeight: FontWeight.w500, letterSpacing: -0.02, color: AevraColors.text)),
+                          const SizedBox(height: 4),
+                          Text('${state.campaigns.length} in this workspace', style: const TextStyle(fontSize: 12, color: AevraColors.muted2)),
+                        ],
+                      ),
+                    ),
+                    // #6 — orb spins while a decision or refresh is in flight.
+                    AiOrb(size: 32, state: state.loading ? AiOrbState.thinking : AiOrbState.idle),
+                  ],
+                ),
+              ),
               const SizedBox(height: 18),
               if (state.loading && state.campaigns.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 24),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AevraColors.lime)),
-                )
+                // #4 — skeleton shimmer in place of the bare spinner.
+                const GlassCard(child: ShimmerList(count: 4))
               else if (state.campaigns.isEmpty)
                 const Text(
                   'No campaigns yet. Create one from the web app to see it here.',
                   style: TextStyle(fontSize: 12, color: AevraColors.muted2),
                 )
               else
-                for (final c in state.campaigns) ...[
-                  Dismissible(
+                for (final (i, c) in state.campaigns.indexed) ...[
+                  Reveal(
+                    index: i,
+                    child: Dismissible(
                     key: ValueKey(c.id),
                     direction: c.status == 'awaiting_approval'
                         ? DismissDirection.horizontal
@@ -64,19 +86,25 @@ class CampaignsScreen extends StatelessWidget {
                       HapticFeedback.mediumImpact();
                       final decision = direction == DismissDirection.startToEnd ? 'approve' : 'reject';
                       await state.decide(c.id, decision);
+                      // #3 + #16 — brass particle burst and ambient chime on
+                      // a human decision, same trigger points as web.
+                      if (context.mounted) AevraServices.celebrate(context);
                       return false; // let the card animate back; the list re-renders from state
                     },
-                    child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _openDetail(context, c);
-                      },
-                      child: Hero(
+                    // Tap is handled by the DepthCard below so the press
+                    // also drives the tilt; an outer GestureDetector here
+                    // would open the sheet twice.
+                    child: Hero(
                         tag: 'campaign-${c.id}',
                         flightShuttleBuilder: (_, animation, __, ___, ____) =>
                             Material(color: Colors.transparent, child: FadeTransition(opacity: animation, child: _cardFor(c))),
-                        child: GlassCard(
+                        child: DepthCard(
+                          elevation: GlassElevation.floating,
                           padding: const EdgeInsets.all(16),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _openDetail(context, c);
+                          },
                           child: Row(
                             children: [
                               Expanded(
@@ -108,11 +136,12 @@ class CampaignsScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
+                  ),
                   ),
                   const SizedBox(height: 10),
                 ],
             ],
+          ),
           ),
         );
       },
@@ -172,14 +201,14 @@ class _CampaignDetailSheet extends StatelessWidget {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(18),
-        constraints: const BoxConstraints(maxHeight: 520),
-        decoration: BoxDecoration(
-          color: AevraColors.panel.withOpacity(0.96),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AevraColors.lineStrong),
-        ),
-        child: Column(
+        constraints: const BoxConstraints(maxHeight: 560),
+        child: GlassSurface(
+          elevation: GlassElevation.lifted,
+          radius: 20,
+          padding: const EdgeInsets.all(18),
+          adaptive: false,
+          borderColor: AevraColors.lineStrong,
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -200,13 +229,25 @@ class _CampaignDetailSheet extends StatelessWidget {
               child: variants.isEmpty
                   ? const Text('No generated variants yet.', style: TextStyle(fontSize: 12, color: AevraColors.muted2))
                   : ListView.separated(
+                      // #7 — variants stagger in as the sheet opens.
                       shrinkWrap: true,
                       itemCount: variants.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (context, i) {
                         final v = variants[i];
-                        return GlassCard(
+                        return Reveal(
+                          index: i,
+                          // Deliberately a plain Container, not a GlassCard:
+                          // this sits inside the lifted glass sheet, and a
+                          // nested BackdropFilter would force a second
+                          // saveLayer and re-blur the same pixels.
+                          child: Container(
                           padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.03),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AevraColors.line),
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -221,6 +262,7 @@ class _CampaignDetailSheet extends StatelessWidget {
                               Text(v.caption, style: const TextStyle(fontSize: 12, color: AevraColors.text, height: 1.4)),
                             ],
                           ),
+                          ),
                         );
                       },
                     ),
@@ -232,6 +274,7 @@ class _CampaignDetailSheet extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
+                        AevraServices.maybeOf(context)?.sound.alert();
                         HapticFeedback.mediumImpact();
                         state.decide(campaign.id, 'reject');
                         Navigator.pop(context);
@@ -244,7 +287,7 @@ class _CampaignDetailSheet extends StatelessWidget {
                     child: FilledButton(
                       style: FilledButton.styleFrom(backgroundColor: AevraColors.lime, foregroundColor: AevraColors.onAccent),
                       onPressed: () {
-                        HapticFeedback.mediumImpact();
+                        AevraServices.celebrate(context);
                         state.decide(campaign.id, 'approve');
                         Navigator.pop(context);
                       },
@@ -255,6 +298,7 @@ class _CampaignDetailSheet extends StatelessWidget {
               ),
             ],
           ],
+          ),
         ),
       ),
     );

@@ -17,12 +17,21 @@
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
+/* Real bug fix, not a style tweak: `html, body { overflow: hidden }` further
+   down this file (the "Viewport-first shell" rule, added for the dashboard)
+   is unconditional — it isn't scoped to `.live-app`. Without its own scroll
+   box, `.legal-page` inherited that hidden overflow with nothing to scroll
+   it, so any content taller than one viewport was permanently unreachable.
+   Giving it an explicit height and its own overflow-y makes it scroll
+   correctly regardless of what the ancestor does. */
 .legal-page {
-  min-height: 100vh;
+  height: 100dvh;
   max-width: 760px;
   margin: 0 auto;
-  padding: 72px 28px;
+  padding: 72px 28px 96px;
+  overflow-y: auto;
   color: var(--text, #f4f6f2);
+  position: relative;
 }
 
 .legal-page a {
@@ -54,6 +63,31 @@
   margin-top: 56px;
   font-size: 0.82rem;
   opacity: 0.7;
+}
+
+/* A restrained version of the app's ambient glow — no WebGL layer here on
+   purpose. These are low-traffic utility pages; a full 3D scene would cost
+   GPU budget nobody benefits from, and a `position: fixed` background
+   sibling would need its own z-index bookkeeping against this page's
+   otherwise-unpositioned content to avoid painting over the text (see the
+   stacking notes on `.live-auth` for what that bookkeeping looks like). A
+   CSS radial gradient gets most of the visual benefit for near-zero cost. */
+.legal-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 18% -8%, rgba(201, 164, 92, 0.07), transparent 38%),
+    radial-gradient(circle at 82% 100%, rgba(63, 93, 82, 0.06), transparent 42%);
+  pointer-events: none;
+}
+
+.legal-page .legal-card {
+  padding: clamp(28px, 4vw, 48px);
+  margin-top: 8px;
+}
+.legal-page .legal-card h2:first-child {
+  margin-top: 0;
 }
 
 * {
@@ -2798,6 +2832,32 @@ body {
 .live-auth > .grain-overlay {
   z-index: 1;
 }
+.live-auth > .hero-video {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.46;
+  filter: saturate(0.82) brightness(0.72) contrast(1.04);
+  pointer-events: none;
+}
+.live-auth > .hero-video-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      115deg,
+      rgba(10, 11, 13, 0.94) 0%,
+      rgba(10, 11, 13, 0.74) 36%,
+      rgba(10, 11, 13, 0.32) 64%,
+      rgba(10, 11, 13, 0.8) 100%
+    ),
+    radial-gradient(circle at 78% 18%, rgba(201, 164, 92, 0.14), transparent 55%);
+}
 .live-auth > section,
 .live-auth > form {
   position: relative;
@@ -2993,6 +3053,264 @@ body {
   border-color: rgba(201, 164, 92, 0.7);
 }
 
+/* ---- Chart kit: instrument-panel data visualization ---- */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.analytics-grid .chart-card.span-2 {
+  grid-column: span 2;
+}
+@media (max-width: 900px) {
+  .analytics-grid .chart-card.span-2 {
+    grid-column: span 1;
+  }
+}
+.chart-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  background: linear-gradient(
+    140deg,
+    rgba(22, 29, 30, var(--glass-alpha, 0.62)),
+    rgba(13, 17, 18, var(--glass-alpha, 0.58))
+  );
+  min-width: 0;
+}
+.chart-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.chart-card-head b {
+  font-size: 12px;
+  font-weight: 600;
+  color: #dfe4dd;
+}
+.chart-card-head span {
+  color: var(--muted-2);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.chart-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.chart-tick {
+  fill: var(--muted-2);
+  font-size: 8px;
+  font-family: var(--font-mono);
+}
+.chart-treemap-label {
+  fill: #0d0f0a;
+  font-size: 10px;
+  font-weight: 600;
+}
+.chart-donut {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.chart-donut-total {
+  fill: var(--text);
+  font-size: 22px;
+  font-weight: 600;
+  font-family: var(--font-serif);
+}
+.chart-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.chart-legend li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.chart-legend b {
+  margin-left: auto;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.chart-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+}
+.chart-hbar,
+.chart-dotplot,
+.chart-bullet {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+.chart-hbar-row,
+.chart-dotplot-row,
+.chart-bullet-row {
+  display: grid;
+  grid-template-columns: 84px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.chart-hbar-row span,
+.chart-dotplot-row span,
+.chart-bullet-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chart-hbar-row b,
+.chart-dotplot-row b,
+.chart-bullet-row b {
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+.chart-hbar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(196, 186, 168, 0.07);
+  overflow: hidden;
+}
+.chart-hbar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+.chart-funnel {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+.chart-funnel-row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.chart-funnel-bar {
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8px;
+  min-width: 22px;
+}
+.chart-funnel-bar b {
+  color: #0d0f0a;
+  font-size: 10px;
+}
+.chart-heatmap {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  justify-content: center;
+}
+.chart-heatmap-cell {
+  width: 34px;
+  height: 22px;
+  border-radius: 4px;
+}
+.chart-heatmap-col,
+.chart-heatmap-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  fill: none;
+  color: var(--muted-2);
+}
+.chart-calendar {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 3px;
+  width: 100%;
+}
+.chart-calendar-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  min-width: 8px;
+}
+.chart-sparkline {
+  overflow: visible;
+}
+.chart-ring {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.chart-ring-value {
+  fill: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+.chart-ring span {
+  color: var(--muted-2);
+  font-size: 10px;
+}
+.chart-dotplot-track {
+  position: relative;
+  height: 14px;
+}
+.chart-dotplot-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line-strong);
+}
+.chart-dotplot-dot {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px rgba(10, 11, 13, 0.8);
+}
+.chart-bullet-track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(196, 186, 168, 0.07);
+  overflow: visible;
+}
+.chart-bullet-fill {
+  height: 100%;
+  border-radius: 5px;
+}
+.chart-bullet-target {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text);
+}
+
 /* ---- Premium command-center pass: type pairing, density, restrained glow ---- */
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,380..600&display=swap");
 :root {
@@ -3080,3 +3398,371 @@ body {
 .live-stats strong {
   font-size: 28px;
 }
+
+/* =================================================================
+   Depth & glass system
+
+   Four elevation tiers, each a genuine step in blur, fill and shadow
+   rather than the same card with a different border. Tiers are what
+   keep glassmorphism legible: if every surface has identical
+   translucency, stacked panels turn to mud.
+
+   All tokens live here so the tiers stay consistent across the app and
+   can be retuned in one place.
+   ================================================================= */
+:root {
+  --glass-tint: 17, 19, 24;
+  --glass-sheen: 232, 211, 166;
+
+  --glass-blur-flat: 8px;
+  --glass-blur-raised: 16px;
+  --glass-blur-floating: 26px;
+  --glass-blur-lifted: 38px;
+
+  --glass-fill-flat: 0.34;
+  --glass-fill-raised: 0.48;
+  --glass-fill-floating: 0.62;
+  --glass-fill-lifted: 0.76;
+
+  --depth-perspective: 1100px;
+}
+
+.glass {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(var(--glass-tint), var(--glass-fill-raised));
+  backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.25);
+  -webkit-backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.25);
+}
+
+/* The top hairline. A 1px gradient edge catching light along the upper
+   border is most of what separates "frosted glass" from "grey box". */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(var(--glass-sheen), 0.22),
+    rgba(var(--glass-sheen), 0) 38%,
+    rgba(var(--glass-sheen), 0.06) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glass-flat {
+  background: rgba(var(--glass-tint), var(--glass-fill-flat));
+  backdrop-filter: blur(var(--glass-blur-flat)) saturate(1.1);
+  -webkit-backdrop-filter: blur(var(--glass-blur-flat)) saturate(1.1);
+  box-shadow: none;
+}
+.glass-raised {
+  background: rgba(var(--glass-tint), var(--glass-fill-raised));
+  backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.25);
+  -webkit-backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.25);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 8px 24px -12px rgba(0, 0, 0, 0.55);
+}
+.glass-floating {
+  background: rgba(var(--glass-tint), var(--glass-fill-floating));
+  backdrop-filter: blur(var(--glass-blur-floating)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--glass-blur-floating)) saturate(1.35);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.45),
+    0 18px 48px -18px rgba(0, 0, 0, 0.7);
+}
+.glass-lifted {
+  background: rgba(var(--glass-tint), var(--glass-fill-lifted));
+  backdrop-filter: blur(var(--glass-blur-lifted)) saturate(1.45);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lifted)) saturate(1.45);
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.5),
+    0 34px 80px -24px rgba(0, 0, 0, 0.82);
+}
+
+/* Perspective has to live on the parent, not the transformed element:
+   applied to the element itself every card gets its own vanishing point
+   and a grid of them tilts inconsistently. */
+.depth-stage {
+  perspective: var(--depth-perspective);
+  transform-style: preserve-3d;
+}
+
+/* Named `.depth-pane`, not `.depth-card` — that name is already taken by
+   the metric cards in advanced-ui.tsx, and reusing it here would silently
+   add `overflow: hidden` and a new radius to them. */
+.depth-pane {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  transform-style: preserve-3d;
+  /* Promote once, up front. Without this the first tilt of each card
+     costs a layer-creation hitch. */
+  will-change: transform;
+}
+
+.depth-pane-content {
+  display: block;
+  position: relative;
+  z-index: 1;
+  /* Lifting content slightly off the card face means the tilt produces
+     real parallax between the panel and its text. */
+  transform: translateZ(28px);
+}
+
+.depth-pane-sheen {
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--sheen-x, 50%) var(--sheen-y, 50%),
+    rgba(var(--glass-sheen), 0.13),
+    rgba(var(--glass-sheen), 0.04) 32%,
+    transparent 62%
+  );
+}
+
+/* Backdrop filters are expensive per-layer. On coarse pointers there is
+   no hover tilt to justify the cost, so the deepest tiers step down. */
+@media (pointer: coarse) {
+  :root {
+    --glass-blur-floating: 18px;
+    --glass-blur-lifted: 24px;
+  }
+  .depth-pane-content {
+    transform: none;
+  }
+}
+
+/* Safari and Firefox fall back to an opaque panel rather than rendering
+   an unreadable transparent one. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-flat,
+  .glass-raised,
+  .glass-floating,
+  .glass-lifted {
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .depth-pane {
+    transform: none !important;
+    will-change: auto;
+  }
+  .depth-pane-content {
+    transform: none;
+  }
+  .depth-pane-sheen {
+    display: none;
+  }
+}
+
+/* =================================================================
+   Applying the system to the existing app.
+
+   These rules retrofit the tiers onto the class names already in
+   live-workspace.tsx rather than requiring ~60 JSX edits. Every panel,
+   stat card, chart and dialog in the app is covered, including the
+   legal pages and the auth screen.
+   ================================================================= */
+
+/* --- tier assignment ------------------------------------------- */
+
+/* Scoped away from the light theme. The `html[data-theme="light"]` rules
+   live earlier in this file, so an unscoped dark-glass override here
+   would win the cascade and leave light mode with black panels. */
+
+/* Chrome sits flat: it's a frame around content, not a floating object. */
+html:not([data-theme="light"]) .sidebar,
+html:not([data-theme="light"]) .topbar,
+html:not([data-theme="light"]) .live-topbar,
+html:not([data-theme="light"]) .live-sidebar {
+  background: rgba(var(--glass-tint), var(--glass-fill-flat));
+  backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.2);
+}
+
+/* Content panels are the working plane. `--glass-alpha` is read first when
+   present (it's the existing scroll-density signal set inline on
+   `.live-content` — scrolled: 0.82, resting: 0.62, and custom properties
+   inherit to every descendant including these). The tier fill is only the
+   fallback for panels outside that scope. Overwriting this with a flat tier
+   value would have silently deleted the scroll-adaptive behavior these two
+   selectors already had. */
+html:not([data-theme="light"]) .live-panel,
+html:not([data-theme="light"]) .panel {
+  background: rgba(var(--glass-tint), var(--glass-alpha, var(--glass-fill-raised)));
+  backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.25);
+  -webkit-backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.25);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 8px 24px -12px rgba(0, 0, 0, 0.55);
+}
+html:not([data-theme="light"]) .chart-card {
+  background: linear-gradient(
+    140deg,
+    rgba(22, 29, 30, var(--glass-alpha, var(--glass-fill-raised))),
+    rgba(13, 17, 18, var(--glass-alpha, var(--glass-fill-raised)))
+  );
+  backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.25);
+  -webkit-backdrop-filter: blur(var(--glass-blur-raised)) saturate(1.25);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 8px 24px -12px rgba(0, 0, 0, 0.55);
+}
+
+/* Metrics read as objects sitting on the panel plane. Same --glass-alpha
+   preservation as above. */
+html:not([data-theme="light"]) .live-stats article {
+  background: rgba(var(--glass-tint), var(--glass-alpha, var(--glass-fill-floating)));
+  backdrop-filter: blur(var(--glass-blur-floating)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--glass-blur-floating)) saturate(1.35);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.45),
+    0 18px 48px -18px rgba(0, 0, 0, 0.7);
+}
+
+/* Modal surfaces take the top tier — they must separate cleanly from a
+   blurred, busy page behind them. `.command-dialog` (CommandPalette) and
+   `.onboarding-card` (Onboarding) are the real class names rendered by
+   advanced-ui.tsx; `.live-auth-card` is the sign-in card. `.review-dialog`
+   is deliberately omitted — grep confirms nothing in live-workspace.tsx
+   renders that class; it's leftover CSS from an earlier markup, and
+   including it here would only add a dead selector. */
+html:not([data-theme="light"]) .command-dialog,
+html:not([data-theme="light"]) .onboarding-card,
+html:not([data-theme="light"]) .live-auth-card {
+  background: rgba(var(--glass-tint), var(--glass-fill-lifted));
+  backdrop-filter: blur(var(--glass-blur-lifted)) saturate(1.45);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lifted)) saturate(1.45);
+  box-shadow:
+    0 3px 6px rgba(0, 0, 0, 0.5),
+    0 34px 80px -24px rgba(0, 0, 0, 0.82);
+}
+
+/* --- the catching edge ----------------------------------------- */
+
+/* `.live-stats article` is rendered by the existing `DepthCard` component
+   (advanced-ui.tsx), which already owns a working pointer-tilt AND its own
+   `::after` glow driven by `--depth-glow-x/y` (see `.depth-card::after`
+   earlier in this file). Adding a second glow here would fight that one
+   for the same pseudo-element on the same node — whichever rule has higher
+   specificity wins outright, it doesn't blend — so metric cards are left
+   out. `.live-auth-card` is left out for a different reason, covered in
+   the tilt section below. */
+.live-panel,
+.chart-card {
+  position: relative;
+}
+
+.live-panel::after,
+.chart-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--sheen-x, 50%) var(--sheen-y, 50%),
+    rgba(var(--glass-sheen), 0.1),
+    rgba(var(--glass-sheen), 0.03) 30%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.live-panel[data-depth-active]::after,
+.chart-card[data-depth-active]::after {
+  opacity: 1;
+}
+
+/* --- tilt ------------------------------------------------------- */
+
+/* Perspective is baked into each card's own transform rather than set on
+   a parent. Two reasons, both load-bearing:
+
+   1. A parent with `perspective` becomes a containing block for
+      position:fixed descendants. `.webgl-background`, `.grain-overlay`
+      and the ambient glows are all fixed, so perspective on a shell
+      element would re-anchor them and break the full-bleed background.
+   2. Only one card is ever tilted at a time (the hovered one), so the
+      usual argument for a shared vanishing point doesn't apply —
+      per-element perspective is both correct and safe here.
+
+   `.live-stats article` is excluded here (see the sheen comment above):
+   DepthCard already drives its own `transform` via `--depth-x`/`--depth-y`
+   and a dedicated `.depth-card` rule. `.live-auth-card` is excluded for a
+   third reason — it renders as `motion.form`, and Framer Motion writes its
+   resolved transform directly to the element's inline `style` attribute.
+   An inline style always wins over a stylesheet rule for the same property
+   regardless of specificity, so a `transform` rule targeting `.live-auth-card`
+   here would be dead code the moment Framer's entrance animation runs —
+   worse than a no-op, since it would look like a bug was fixed when it
+   silently wasn't. */
+[data-depth-enabled] .live-panel,
+[data-depth-enabled] .chart-card {
+  transform: perspective(var(--depth-perspective)) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg));
+  transition:
+    transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The existing `.live-panel:hover` sets its own transform, which would
+   override the tilt on the element the pointer is actually over. */
+[data-depth-enabled] .live-panel:hover {
+  transform: perspective(var(--depth-perspective)) rotateX(var(--tilt-x, 0deg))
+    rotateY(var(--tilt-y, 0deg)) translateY(-2px);
+}
+
+/* While the pointer is on a card the transition is dropped so the tilt
+   tracks the cursor directly; it only eases on the way back to rest. */
+[data-depth-active] {
+  transition: none !important;
+}
+
+/* --- guards ----------------------------------------------------- */
+
+@media (max-width: 899px), (pointer: coarse) {
+  .live-panel,
+  .chart-card {
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-panel,
+  .chart-card {
+    transform: none !important;
+    transition: none !important;
+  }
+  .live-panel::after,
+  .chart-card::after {
+    display: none;
+  }
+}
+
+/* Panel content has to sit above the ::after sheen, or the highlight
+   paints over the text. */
+.live-panel > *,
+.chart-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+

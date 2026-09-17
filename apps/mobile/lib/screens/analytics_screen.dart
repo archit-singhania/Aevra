@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
+import '../widgets/advanced_ui.dart';
+import '../widgets/depth.dart';
 import '../widgets/glass_card.dart';
 
 class AnalyticsScreen extends StatelessWidget {
@@ -19,24 +21,62 @@ class AnalyticsScreen extends StatelessWidget {
         final approvalRate = campaigns.isEmpty ? 0 : ((approved / campaigns.length) * 100).round();
         final connected = state.accounts.where((a) => a.status == 'connected').length;
 
-        return RefreshIndicator(
+        final firstLoad = state.loading && campaigns.isEmpty;
+
+        return AdaptiveGlassScroll(
+          child: RefreshIndicator(
           onRefresh: state.load,
+          color: AevraColors.lime,
+          backgroundColor: AevraColors.panel,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
-              Text('Analytics', style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w500, letterSpacing: -0.015, color: AevraColors.text)),
-              const SizedBox(height: 4),
-              const Text('This workspace', style: TextStyle(fontSize: 12, color: AevraColors.muted2)),
+              ParallaxLayer(
+                depth: -1.4,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Analytics', style: GoogleFonts.fraunces(fontSize: 28, fontWeight: FontWeight.w500, letterSpacing: -0.02, color: AevraColors.text)),
+                          const SizedBox(height: 4),
+                          const Text('This workspace', style: TextStyle(fontSize: 12, color: AevraColors.muted2)),
+                        ],
+                      ),
+                    ),
+                    AiOrb(size: 32, state: state.loading ? AiOrbState.thinking : AiOrbState.idle),
+                  ],
+                ),
+              ),
               const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(child: _stat('Approval rate', '$approvalRate%', AevraColors.lime)),
-                  const SizedBox(width: 10),
-                  Expanded(child: _stat('Connected accounts', '$connected', AevraColors.violet)),
-                ],
+              if (firstLoad) ...[
+                Row(
+                  children: const [
+                    Expanded(child: GlassCard(child: ShimmerStatCard())),
+                    SizedBox(width: 10),
+                    Expanded(child: GlassCard(child: ShimmerStatCard())),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const GlassCard(child: ShimmerList(count: 3)),
+              ] else ...[
+              Reveal(
+                index: 0,
+                child: Row(
+                  children: [
+                    Expanded(child: _stat('Approval rate', '$approvalRate%', AevraColors.lime)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _stat('Connected accounts', '$connected', AevraColors.violet)),
+                  ],
+                ),
               ),
               const SizedBox(height: 10),
-              GlassCard(
+              Reveal(
+                index: 1,
+                child: DepthCard(
+                elevation: GlassElevation.floating,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -56,8 +96,12 @@ class AnalyticsScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              ),
               const SizedBox(height: 10),
-              GlassCard(
+              Reveal(
+                index: 2,
+                child: DepthCard(
+                elevation: GlassElevation.floating,
                 child: _AnimatedBars(
                   values: [
                     campaigns.length.toDouble(),
@@ -67,8 +111,12 @@ class AnalyticsScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              ),
               const SizedBox(height: 10),
-              GlassCard(
+              Reveal(
+                index: 3,
+                child: GlassSurface(
+                elevation: GlassElevation.flat,
                 child: Row(
                   children: [
                     const Icon(Icons.check_circle_outline, size: 16, color: AevraColors.lime),
@@ -82,7 +130,10 @@ class AnalyticsScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              ),
+              ],
             ],
+          ),
           ),
         );
       },
@@ -90,12 +141,14 @@ class AnalyticsScreen extends StatelessWidget {
   }
 
   Widget _stat(String label, String value, Color color) {
-    return GlassCard(
-      borderColor: color.withOpacity(0.18),
+    return DepthCard(
+      elevation: GlassElevation.floating,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: color)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 30, fontWeight: FontWeight.w600, color: color, letterSpacing: -0.02)),
           const SizedBox(height: 2),
           Text(label, style: const TextStyle(fontSize: 10, color: AevraColors.muted2)),
         ],

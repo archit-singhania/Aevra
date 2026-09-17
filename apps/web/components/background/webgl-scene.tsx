@@ -3,7 +3,13 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-const VERTEX_SHADER = /* glsl */ `
+/* ------------------------------------------------------------------ *
+ * Backdrop pass — the original ambient noise field, now rendered as a
+ * separate orthographic pass behind the 3D layer rather than being the
+ * whole scene.
+ * ------------------------------------------------------------------ */
+
+const BACKDROP_VERT = /* glsl */ `
   varying vec2 vUv;
   void main() {
     vUv = uv;
@@ -62,17 +68,21 @@ const NOISE_GLSL = /* glsl */ `
   }
 `;
 
-const FRAGMENT_SHADER = /* glsl */ `
+const BACKDROP_FRAG = /* glsl */ `
   precision highp float;
   varying vec2 vUv;
   uniform float uTime;
   uniform vec2 uResolution;
+  uniform vec2 uPointer;
 
   ${NOISE_GLSL}
 
   void main() {
     vec2 uv = vUv;
     vec2 aspectUv = (uv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) + 0.5;
+    // The field drifts very slightly against the pointer, which reads as the
+    // backdrop sitting further away than the shards in front of it.
+    aspectUv += uPointer * 0.012;
 
     float t = uTime * 0.024;
 
@@ -104,12 +114,115 @@ const FRAGMENT_SHADER = /* glsl */ `
   }
 `;
 
-/**
- * Full-bleed animated WebGL background. Renders a slow, ambient plasma-noise
- * field in the app palette behind the UI. No-ops (renders nothing) when the
- * viewer prefers reduced motion — the existing static CSS ambient glows
- * remain as the fallback in that case.
- */
+/* ------------------------------------------------------------------ *
+ * Depth pass — instanced brass/platinum shards drifting in real 3D.
+ * One draw call for every shard via InstancedMesh; the per-instance
+ * animation runs on the GPU from a static `aSeed` attribute, so the CPU
+ * touches nothing per frame except two uniforms.
+ * ------------------------------------------------------------------ */
+
+const SHARD_VERT = /* glsl */ `
+  precision highp float;
+
+  attribute vec4 aSeed;   // xyz = home position, w = phase
+  attribute vec3 aSpin;   // per-instance rotation speed
+  attribute float aScale;
+
+  uniform float uTime;
+  uniform float uDepthFade;
+
+  varying float vFresnel;
+  varying float vDepth;
+  varying float vTint;
+
+  mat3 rotation(vec3 axisSpeed, float t) {
+    float x = axisSpeed.x * t;
+    float y = axisSpeed.y * t;
+    float z = axisSpeed.z * t;
+    mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(x), -sin(x), 0.0, sin(x), cos(x));
+    mat3 ry = mat3(cos(y), 0.0, sin(y), 0.0, 1.0, 0.0, -sin(y), 0.0, cos(y));
+    mat3 rz = mat3(cos(z), -sin(z), 0.0, sin(z), cos(z), 0.0, 0.0, 0.0, 1.0);
+    return rz * ry * rx;
+  }
+
+  void main() {
+    mat3 rot = rotation(aSpin, uTime);
+    vec3 local = rot * (position * aScale);
+
+    // Slow buoyant drift, unique per instance via the phase seed.
+    vec3 drift = vec3(
+      sin(uTime * 0.11 + aSeed.w) * 0.55,
+      cos(uTime * 0.09 + aSeed.w * 1.7) * 0.42,
+      sin(uTime * 0.07 + aSeed.w * 0.6) * 0.30
+    );
+
+    vec3 worldPos = aSeed.xyz + drift + local;
+    vec4 viewPos = modelViewMatrix * vec4(worldPos, 1.0);
+
+    vec3 viewNormal = normalize(normalMatrix * (rot * normal));
+    vec3 viewDir = normalize(-viewPos.xyz);
+    // Rim term — edges catch the light, faces stay near-black. This is what
+    // makes them read as bevelled metal rather than flat polygons.
+    vFresnel = pow(1.0 - abs(dot(viewNormal, viewDir)), 2.6);
+
+    vDepth = clamp((-viewPos.z - 4.0) / uDepthFade, 0.0, 1.0);
+    vTint = fract(aSeed.w * 0.31);
+
+    gl_Position = projectionMatrix * viewPos;
+  }
+`;
+
+const SHARD_FRAG = /* glsl */ `
+  precision highp float;
+
+  varying float vFresnel;
+  varying float vDepth;
+  varying float vTint;
+
+  uniform float uIntensity;
+
+  void main() {
+    vec3 brass = vec3(0.788, 0.643, 0.361);
+    vec3 platinum = vec3(0.722, 0.745, 0.780);
+    vec3 emerald = vec3(0.247, 0.365, 0.322);
+
+    vec3 tint = vTint < 0.55 ? brass : (vTint < 0.85 ? platinum : emerald);
+
+    // Far shards dissolve into the backdrop instead of popping at the fog
+    // plane — cheaper and softer than real depth-of-field.
+    float fade = 1.0 - vDepth;
+    float alpha = vFresnel * fade * uIntensity;
+
+    if (alpha < 0.004) discard;
+    gl_FragColor = vec4(tint * (0.55 + vFresnel * 0.8), alpha);
+  }
+`;
+
+/* ------------------------------------------------------------------ *
+ * Performance tiering. The scene degrades rather than stutters: it
+ * starts at a tier chosen from device hints, then watches real frame
+ * times and drops a tier if it can't hold budget.
+ * ------------------------------------------------------------------ */
+
+type Tier = 0 | 1 | 2;
+
+const TIERS = [
+  { shards: 0, dpr: 1.0, intensity: 0 }, // static fallback, no 3D layer
+  { shards: 34, dpr: 1.25, intensity: 0.55 },
+  { shards: 72, dpr: 1.75, intensity: 0.72 },
+] as const;
+
+function initialTier(): Tier {
+  if (typeof navigator === "undefined") return 1;
+  const cores = navigator.hardwareConcurrency ?? 4;
+  // `deviceMemory` is Chromium-only; absence is not evidence of a weak device.
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  if (cores <= 4 || (memory !== undefined && memory <= 4)) return 1;
+  if (coarse) return 1;
+  return 2;
+}
+
 export function WebglScene() {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -117,48 +230,179 @@ export function WebglScene() {
     const container = containerRef.current;
     if (!container) return;
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) return;
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (motionQuery.matches) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
+    } catch {
+      // No WebGL (or it was blocked). The CSS ambient glows stand in.
+      return;
+    }
+
+    let tier: Tier = initialTier();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, TIERS[tier].dpr));
+    renderer.autoClear = false;
     container.appendChild(renderer.domElement);
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-
-    const uniforms = {
+    /* ---- backdrop ---- */
+    const backdropScene = new THREE.Scene();
+    const backdropCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const backdropUniforms = {
       uTime: { value: 0 },
       uResolution: { value: new THREE.Vector2(1, 1) },
+      uPointer: { value: new THREE.Vector2(0, 0) },
     };
-
-    const material = new THREE.ShaderMaterial({
-      vertexShader: VERTEX_SHADER,
-      fragmentShader: FRAGMENT_SHADER,
-      uniforms,
+    const backdropGeometry = new THREE.PlaneGeometry(2, 2);
+    const backdropMaterial = new THREE.ShaderMaterial({
+      vertexShader: BACKDROP_VERT,
+      fragmentShader: BACKDROP_FRAG,
+      uniforms: backdropUniforms,
+      depthTest: false,
+      depthWrite: false,
     });
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
+    backdropScene.add(new THREE.Mesh(backdropGeometry, backdropMaterial));
 
-    const setSize = () => {
-      const width = container.clientWidth || window.innerWidth;
-      const height = container.clientHeight || window.innerHeight;
-      renderer.setSize(width, height, false);
-      uniforms.uResolution.value.set(width, height);
+    /* ---- depth layer ---- */
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 60);
+    camera.position.set(0, 0, 14);
+
+    const shardGeometry = new THREE.InstancedBufferGeometry();
+    const source = new THREE.IcosahedronGeometry(1, 0);
+    shardGeometry.index = source.index;
+    shardGeometry.attributes.position = source.attributes.position;
+    shardGeometry.attributes.normal = source.attributes.normal;
+
+    const maxShards = TIERS[2].shards;
+    const seeds = new Float32Array(maxShards * 4);
+    const spins = new Float32Array(maxShards * 3);
+    const scales = new Float32Array(maxShards);
+
+    // Deterministic placement — a fixed seed means the composition is the
+    // same on every load instead of occasionally clumping badly.
+    let rngState = 0x9e3779b9;
+    const rand = () => {
+      rngState = (rngState * 1664525 + 1013904223) >>> 0;
+      return rngState / 0xffffffff;
     };
+
+    for (let i = 0; i < maxShards; i += 1) {
+      seeds[i * 4 + 0] = (rand() - 0.5) * 26;
+      seeds[i * 4 + 1] = (rand() - 0.5) * 16;
+      seeds[i * 4 + 2] = -rand() * 26 - 1;
+      seeds[i * 4 + 3] = rand() * 100;
+      spins[i * 3 + 0] = (rand() - 0.5) * 0.16;
+      spins[i * 3 + 1] = (rand() - 0.5) * 0.16;
+      spins[i * 3 + 2] = (rand() - 0.5) * 0.10;
+      scales[i] = 0.18 + rand() * 0.62;
+    }
+
+    shardGeometry.setAttribute("aSeed", new THREE.InstancedBufferAttribute(seeds, 4));
+    shardGeometry.setAttribute("aSpin", new THREE.InstancedBufferAttribute(spins, 3));
+    shardGeometry.setAttribute("aScale", new THREE.InstancedBufferAttribute(scales, 1));
+    shardGeometry.instanceCount = TIERS[tier].shards;
+    // Frustum culling is meaningless here: the vertex shader moves every
+    // instance, so the CPU-side bounding sphere would be wrong.
+    shardGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 40);
+
+    const shardUniforms = {
+      uTime: { value: 0 },
+      uIntensity: { value: TIERS[tier].intensity },
+      uDepthFade: { value: 30 },
+    };
+    const shardMaterial = new THREE.ShaderMaterial({
+      vertexShader: SHARD_VERT,
+      fragmentShader: SHARD_FRAG,
+      uniforms: shardUniforms,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
+
+    const shards = new THREE.Mesh(shardGeometry, shardMaterial);
+    shards.frustumCulled = false;
+    scene.add(shards);
+
+    const applyTier = (next: Tier) => {
+      tier = next;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, TIERS[tier].dpr));
+      shardGeometry.instanceCount = TIERS[tier].shards;
+      shardUniforms.uIntensity.value = TIERS[tier].intensity;
+      setSize();
+    };
+
+    function setSize() {
+      const width = container!.clientWidth || window.innerWidth;
+      const height = container!.clientHeight || window.innerHeight;
+      renderer.setSize(width, height, false);
+      backdropUniforms.uResolution.value.set(width, height);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
     setSize();
 
+    /* ---- pointer + scroll parallax ---- */
+    const pointer = new THREE.Vector2(0, 0);
+    const pointerTarget = new THREE.Vector2(0, 0);
+    let scrollTarget = 0;
+    let scrollEased = 0;
+
+    const onPointerMove = (event: PointerEvent) => {
+      pointerTarget.set(
+        (event.clientX / window.innerWidth) * 2 - 1,
+        -((event.clientY / window.innerHeight) * 2 - 1),
+      );
+    };
+    const onScroll = () => {
+      scrollTarget = window.scrollY;
+    };
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    /* ---- loop ---- */
     let raf = 0;
-    let paused = false;
+    let paused = document.hidden;
     const clock = new THREE.Clock();
+    let slowFrames = 0;
 
     const tick = () => {
-      if (!paused) {
-        uniforms.uTime.value += clock.getDelta();
-        renderer.render(scene, camera);
-      }
       raf = window.requestAnimationFrame(tick);
+      if (paused) return;
+
+      const delta = Math.min(clock.getDelta(), 0.05);
+      backdropUniforms.uTime.value += delta;
+      shardUniforms.uTime.value += delta;
+
+      // Frame-rate independent easing, so parallax feels identical at 60
+      // and 120Hz rather than twice as fast on a ProMotion display.
+      const ease = 1 - Math.pow(0.001, delta);
+      pointer.lerp(pointerTarget, ease);
+      scrollEased += (scrollTarget - scrollEased) * ease;
+      backdropUniforms.uPointer.value.copy(pointer);
+
+      if (tier > 0) {
+        camera.position.x = pointer.x * 1.15;
+        camera.position.y = pointer.y * 0.75 - scrollEased * 0.0016;
+        camera.lookAt(0, -scrollEased * 0.0008, -6);
+      }
+
+      renderer.clear();
+      renderer.render(backdropScene, backdropCamera);
+      if (tier > 0) renderer.render(scene, camera);
+
+      // Sustained budget overrun drops a tier, once. Single slow frames
+      // (a GC pause, a heavy React commit) are ignored.
+      if (tier > 0) {
+        if (delta > 0.028) slowFrames += 1;
+        else slowFrames = Math.max(0, slowFrames - 1);
+        if (slowFrames > 90) {
+          slowFrames = 0;
+          applyTier((tier - 1) as Tier);
+        }
+      }
     };
     raf = window.requestAnimationFrame(tick);
 
@@ -168,15 +412,41 @@ export function WebglScene() {
     };
     document.addEventListener("visibilitychange", onVisibility);
 
+    // Stop rendering entirely when the canvas is off-screen.
+    const io = new IntersectionObserver(([entry]) => {
+      paused = document.hidden || !entry.isIntersecting;
+      if (!paused) clock.getDelta();
+    });
+    io.observe(container);
+
+    const onMotionChange = () => {
+      if (motionQuery.matches) applyTier(0);
+    };
+    motionQuery.addEventListener("change", onMotionChange);
+
     const resizeObserver = new ResizeObserver(setSize);
     resizeObserver.observe(container);
 
+    const onContextLost = (event: Event) => {
+      event.preventDefault();
+      window.cancelAnimationFrame(raf);
+    };
+    renderer.domElement.addEventListener("webglcontextlost", onContextLost);
+
     return () => {
       window.cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onVisibility);
+      motionQuery.removeEventListener("change", onMotionChange);
+      renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
+      io.disconnect();
       resizeObserver.disconnect();
-      geometry.dispose();
-      material.dispose();
+      backdropGeometry.dispose();
+      backdropMaterial.dispose();
+      source.dispose();
+      shardGeometry.dispose();
+      shardMaterial.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement);

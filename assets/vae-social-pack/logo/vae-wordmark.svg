@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220">
+  <rect width="760" height="220" rx="32" fill="#0a0d14"/>
+  <g transform="translate(18 4) scale(.82)"><rect x="55" y="55" width="146" height="146" rx="38" fill="none" stroke="#b9ff4b" stroke-width="13" transform="rotate(-32 128 128)"/><path d="M128 80 88 176M128 80 168 176M108 139h40" fill="none" stroke="#f5f7f1" stroke-width="10" stroke-linecap="round"/></g>
+  <text x="235" y="130" fill="#f5f7f1" font-family="Arial, sans-serif" font-size="96" font-weight="700" letter-spacing="8">VAE</text>
+  <text x="242" y="172" fill="#b9ff4b" font-family="Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="6">CAMPAIGN INTELLIGENCE</text>
+</svg>

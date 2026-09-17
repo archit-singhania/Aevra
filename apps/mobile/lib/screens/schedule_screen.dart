@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
+import '../widgets/advanced_ui.dart';
+import '../widgets/depth.dart';
 import '../widgets/glass_card.dart';
 
 class ScheduleScreen extends StatelessWidget {
@@ -31,28 +33,47 @@ class ScheduleScreen extends StatelessWidget {
       animation: state,
       builder: (context, _) {
         final scheduled = state.scheduled;
-        return RefreshIndicator(
+        return AdaptiveGlassScroll(
+          child: RefreshIndicator(
           onRefresh: state.load,
+          color: AevraColors.lime,
+          backgroundColor: AevraColors.panel,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
-              Text('Schedule', style: GoogleFonts.fraunces(fontSize: 24, fontWeight: FontWeight.w500, letterSpacing: -0.015, color: AevraColors.text)),
-              const SizedBox(height: 4),
-              Text('${scheduled.length} scheduled posts', style: const TextStyle(fontSize: 12, color: AevraColors.muted2)),
+              ParallaxLayer(
+                depth: -1.4,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Schedule', style: GoogleFonts.fraunces(fontSize: 28, fontWeight: FontWeight.w500, letterSpacing: -0.02, color: AevraColors.text)),
+                          const SizedBox(height: 4),
+                          Text('${scheduled.length} scheduled posts', style: const TextStyle(fontSize: 12, color: AevraColors.muted2)),
+                        ],
+                      ),
+                    ),
+                    AiOrb(size: 32, state: state.loading ? AiOrbState.thinking : AiOrbState.idle),
+                  ],
+                ),
+              ),
               const SizedBox(height: 18),
               if (state.loading && scheduled.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 24),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AevraColors.lime)),
-                )
+                const GlassCard(child: ShimmerList(count: 4))
               else if (scheduled.isEmpty)
                 const Text(
                   'No scheduled posts. Approved content can be scheduled from the web app.',
                   style: TextStyle(fontSize: 12, color: AevraColors.muted2),
                 )
               else
-                for (final p in scheduled) ...[
-                  GlassCard(
+                for (final (i, p) in scheduled.indexed) ...[
+                  Reveal(
+                    index: i,
+                    child: DepthCard(
+                    elevation: GlassElevation.raised,
                     padding: const EdgeInsets.all(14),
                     child: Row(
                       children: [
@@ -81,9 +102,11 @@ class ScheduleScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  ),
                   const SizedBox(height: 8),
                 ],
             ],
+          ),
           ),
         );
       },

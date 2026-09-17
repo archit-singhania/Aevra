@@ -29,6 +29,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import {
@@ -43,8 +44,39 @@ import {
   VoiceIndicator,
   VoiceInputButton,
 } from "@/components/advanced-ui";
+import {
+  AreaChart,
+  BarChart,
+  BubbleChart,
+  CalendarHeatmap,
+  CandlestickChart,
+  ComboChart,
+  DonutChart,
+  DotPlot,
+  FunnelChart,
+  GaugeChart,
+  GroupedBarChart,
+  HeatmapChart,
+  HorizontalBarChart,
+  LineChart,
+  LollipopChart,
+  PieChart,
+  PolarAreaChart,
+  ProgressRing,
+  RadarChart,
+  RadialBarChart,
+  ScatterChart,
+  Sparkline,
+  StackedBarChart,
+  StreamChart,
+  TreemapChart,
+  WaterfallChart,
+  ChartFrame,
+} from "@/components/charts";
 import { GrainOverlay } from "@/components/background/grain-overlay";
+import { HeroVideo } from "@/components/background/hero-video";
 import { WebglBackground } from "@/components/background/webgl-background";
+import { Parallax, Reveal3D } from "@/components/depth";
 import { Button } from "@/components/ui/button";
 import {
   api,
@@ -76,7 +108,7 @@ function handleGlow(event: MouseEvent<HTMLElement>) {
   );
 }
 
-type View = "overview" | "campaigns" | "brain" | "media" | "publishing";
+type View = "overview" | "campaigns" | "brain" | "media" | "publishing" | "analytics";
 const browserSession = "cookie";
 const legacyTokenKey = "vae.staging.access-token";
 const platforms: Array<{ id: Platform; label: string }> = [
@@ -190,6 +222,11 @@ export function LiveWorkspace() {
   const [scrolled, setScrolled] = useState(false);
   const [metricOrder, setMetricOrder] = useState(["sources", "campaigns", "approval", "assets"]);
   const [dragMetric, setDragMetric] = useState<string | null>(null);
+  // The dashboard scrolls inside `.live-content`, not the window (see the
+  // "Viewport-first shell" rule in globals.css) — Parallax needs this ref
+  // as its scroll container or it silently tracks window scroll, which
+  // never moves here.
+  const contentRef = useRef<HTMLDivElement>(null);
   const currentCampaign = campaigns.find((item) => item.id === selected);
   const currentVariant = variants.find((item) => item.status === "approved") ?? variants[0];
   const playTone = useCallback(() => {
@@ -551,6 +588,8 @@ export function LiveWorkspace() {
       <MotionConfig reducedMotion="user">
         <main className="live-auth">
           <WebglBackground />
+          <HeroVideo />
+          <div className="hero-video-overlay" aria-hidden="true" />
           <GrainOverlay />
           <motion.section
             initial={{ opacity: 0, y: 16 }}
@@ -673,6 +712,7 @@ export function LiveWorkspace() {
     { id: "brain" as View, label: "Brand Brain", icon: Search },
     { id: "media" as View, label: "Content library", icon: Image },
     { id: "publishing" as View, label: "Calendar & publishing", icon: CalendarDays },
+    { id: "analytics" as View, label: "Analytics", icon: BrainCircuit },
   ];
   const overview = (
     <>
@@ -680,7 +720,9 @@ export function LiveWorkspace() {
         <ParticleField pulse={pulse} />
         <div>
           <p className="live-kicker">Live staging workspace</p>
-          <h1>Good to see you, {user?.display_name?.split(" ")[0] ?? "there"}.</h1>
+          <Parallax depth={-1.2} containerRef={contentRef}>
+            <h1>Good to see you, {user?.display_name?.split(" ")[0] ?? "there"}.</h1>
+          </Parallax>
           <p>
             <TypewriterText text="Your VAE control room is connected to the FastAPI workspace." />
           </p>
@@ -752,7 +794,8 @@ export function LiveWorkspace() {
         </div>
         {campaigns.length ? (
           campaigns.map((item) => (
-            <button
+            <motion.button
+              layoutId={`campaign-card-${item.id}`}
               className="live-list-row"
               key={item.id}
               onClick={() => {
@@ -769,7 +812,7 @@ export function LiveWorkspace() {
               </span>
               <Status value={item.status} />
               <ArrowRight size={15} />
-            </button>
+            </motion.button>
           ))
         ) : (
           <Empty
@@ -784,8 +827,10 @@ export function LiveWorkspace() {
   const campaignsView = (
     <div className="live-columns">
       <section className="live-panel">
-        <p className="live-kicker">New campaign</p>
-        <h2>From brief to review</h2>
+        <Reveal3D>
+          <p className="live-kicker">New campaign</p>
+          <h2>From brief to review</h2>
+        </Reveal3D>
         <form className="live-form" onSubmit={createCampaign}>
           <Field label="Campaign name">
             <input
@@ -869,20 +914,22 @@ export function LiveWorkspace() {
         <section className="live-panel">
           {currentCampaign ? (
             <>
-              <div className="live-panel-head">
+              <motion.div className="live-panel-head" layoutId={`campaign-card-${currentCampaign.id}`}>
                 <div>
                   <p className="live-kicker">Generated variants</p>
                   <h2>{currentCampaign.name}</h2>
                 </div>
                 <Status value={currentCampaign.status} />
-              </div>
+              </motion.div>
               {variants.map((variant) => (
                 <article className="live-variant" key={variant.id}>
                   <div>
                     <b>{variant.platform}</b>
                     <span>{Math.round(variant.quality_score)}/100</span>
                   </div>
-                  <p>{variant.caption}</p>
+                  <p>
+                    <TypewriterText text={variant.caption} speed={6} />
+                  </p>
                   <small>
                     {variant.citations.length} evidence references · {variant.status}
                   </small>
@@ -913,8 +960,10 @@ export function LiveWorkspace() {
   const brainView = (
     <div className="live-columns">
       <section className="live-panel">
-        <p className="live-kicker">Brand Brain</p>
-        <h2>Profile & evidence</h2>
+        <Reveal3D>
+          <p className="live-kicker">Brand Brain</p>
+          <h2>Profile & evidence</h2>
+        </Reveal3D>
         {brands[0] ? (
           <div className="live-brand">
             <div>{initial(brands[0].name)}</div>
@@ -981,7 +1030,9 @@ export function LiveWorkspace() {
             <article className="live-evidence" key={item.chunk_id}>
               <b>{item.document_title}</b>
               <span>{Math.round(item.score * 100)}% match</span>
-              <p>{item.excerpt}</p>
+              <p>
+                <TypewriterText text={item.excerpt} speed={8} />
+              </p>
             </article>
           ))}
         </section>
@@ -1017,8 +1068,10 @@ export function LiveWorkspace() {
   const mediaView = (
     <div className="live-columns">
       <section className="live-panel">
-        <p className="live-kicker">Image studio</p>
-        <h2>Generate a visual</h2>
+        <Reveal3D>
+          <p className="live-kicker">Image studio</p>
+          <h2>Generate a visual</h2>
+        </Reveal3D>
         <form className="live-form" onSubmit={createImage}>
           <Field label="Campaign">
             <select
@@ -1082,8 +1135,10 @@ export function LiveWorkspace() {
   const publishingView = (
     <div className="live-columns">
       <section className="live-panel">
-        <p className="live-kicker">Staging connector</p>
-        <h2>Connect publisher</h2>
+        <Reveal3D>
+          <p className="live-kicker">Staging connector</p>
+          <h2>Connect publisher</h2>
+        </Reveal3D>
         <p className="live-helper">
           OAuth approval remains a production step; this creates a safely referenced staging
           account.
@@ -1208,6 +1263,227 @@ export function LiveWorkspace() {
       </div>
     </div>
   );
+  const statusCounts = campaigns.reduce((acc, c) => {
+    acc[c.status] = (acc[c.status] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const platformCounts = campaigns.reduce((acc, c) => {
+    for (const p of c.platforms) acc[p] = (acc[p] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const docTypeCounts = documents.reduce((acc, d) => {
+    acc[d.source_type] = (acc[d.source_type] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const assetTypeCounts = assets.reduce((acc, a) => {
+    acc[a.media_type] = (acc[a.media_type] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const assetStatusCounts = assets.reduce((acc, a) => {
+    acc[a.status] = (acc[a.status] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const approvedCount = campaigns.filter(
+    (c) => c.status === "approved" || c.status === "published",
+  ).length;
+  const approvalRate = campaigns.length
+    ? Math.round((approvedCount / campaigns.length) * 100)
+    : 0;
+  const byDay = (rows: Array<{ created_at: string }>) => {
+    const map = new Map<string, number>();
+    for (const row of rows) {
+      const key = new Date(row.created_at).toISOString().slice(0, 10);
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  };
+  const campaignDays = byDay(campaigns);
+  const assetDays = byDay(assets);
+  const documentDays = byDay(documents);
+  const calendarDays = campaignDays.slice(-28).map(([d, value]) => ({ date: d, value }));
+  const variantQuality = variants.map((v) => Math.round(v.quality_score));
+  const variantCitations = variants.map((v, i) => ({
+    x: v.citations.length,
+    y: Math.round(v.quality_score),
+    label: `${v.platform}-${i}`,
+  }));
+  const platformQuality: Record<string, number[]> = {};
+  for (const v of variants) {
+    (platformQuality[v.platform] ??= []).push(v.quality_score);
+  }
+  const analyticsView = (
+    <div>
+      <Reveal3D>
+        <p className="live-kicker">Instrument panel</p>
+        <h2 style={{ margin: "0 0 16px", fontSize: 21, fontWeight: 500, letterSpacing: "-0.03em" }}>
+          Analytics
+        </h2>
+      </Reveal3D>
+      <div className="analytics-grid">
+      <ChartFrame title="Campaign status mix" caption={`${campaigns.length} total`}>
+        <DonutChart
+          items={Object.entries(statusCounts).map(([label, value]) => ({
+            label: label.replaceAll("_", " "),
+            value,
+          }))}
+        />
+      </ChartFrame>
+      <ChartFrame title="Approval rate" caption="approved + published">
+        <GaugeChart value={approvalRate} max={100} label="% approved" />
+      </ChartFrame>
+      <ChartFrame title="Platform distribution" caption="campaigns by platform">
+        <PieChart items={Object.entries(platformCounts).map(([label, value]) => ({ label, value }))} />
+      </ChartFrame>
+      <ChartFrame title="Campaigns by platform" caption="ranked">
+        <HorizontalBarChart
+          items={Object.entries(platformCounts)
+            .sort(([, a], [, b]) => b - a)
+            .map(([label, value]) => ({ label, value }))}
+        />
+      </ChartFrame>
+      <ChartFrame title="Workspace signals" caption="sources · campaigns · assets" className="span-2">
+        <StackedBarChart
+          groups={["Sources", "Campaigns", "Assets"]}
+          series={[{ name: "count", values: [documents.length, campaigns.length, assets.length] }]}
+        />
+      </ChartFrame>
+      <ChartFrame title="Campaign creation" caption="daily, real timestamps">
+        <AreaChart values={campaignDays.map(([, v]) => v)} />
+      </ChartFrame>
+      <ChartFrame title="Source ingestion" caption="daily">
+        <LineChart values={documentDays.map(([, v]) => v)} />
+      </ChartFrame>
+      <ChartFrame title="Asset generation" caption="daily">
+        <BarChart values={assetDays.map(([, v]) => v)} />
+      </ChartFrame>
+      <ChartFrame title="Activity streams" caption="sources / campaigns / assets" className="span-2">
+        <StreamChart
+          series={[
+            { name: "Sources", values: documentDays.map(([, v]) => v), color: "#b8bec7" },
+            { name: "Campaigns", values: campaignDays.map(([, v]) => v), color: "#c9a45c" },
+            { name: "Assets", values: assetDays.map(([, v]) => v), color: "#3f5d52" },
+          ]}
+        />
+      </ChartFrame>
+      <ChartFrame title="Recent activity" caption="last 28 campaign days">
+        <CalendarHeatmap days={calendarDays} />
+      </ChartFrame>
+      <ChartFrame title="Approval funnel" caption="status pipeline">
+        <FunnelChart
+          stages={[
+            { label: "Draft", value: statusCounts.draft ?? 0 },
+            { label: "Awaiting approval", value: statusCounts.awaiting_approval ?? 0 },
+            {
+              label: "Approved",
+              value: (statusCounts.approved ?? 0) + (statusCounts.published ?? 0),
+            },
+          ]}
+        />
+      </ChartFrame>
+      <ChartFrame title="Variant quality scores" caption={`${variants.length} in current campaign`}>
+        <DotPlot items={variants.map((v) => ({ label: v.platform, value: v.quality_score, max: 100 }))} />
+      </ChartFrame>
+      <ChartFrame title="Quality by variant" caption="ranked">
+        <LollipopChart
+          items={variants.map((v, i) => ({
+            label: `${v.platform.slice(0, 3)}${i}`,
+            value: Math.round(v.quality_score),
+          }))}
+        />
+      </ChartFrame>
+      <ChartFrame title="Quality trend" caption="mini sparkline">
+        <Sparkline values={variantQuality.length ? variantQuality : [0]} width={220} height={60} />
+      </ChartFrame>
+      <ChartFrame title="Quality vs. evidence" caption="citations per variant">
+        <ScatterChart points={variantCitations} xLabel="citations" yLabel="quality" />
+      </ChartFrame>
+      <ChartFrame title="Platform quality profile" caption="radar, avg score">
+        <RadarChart
+          axes={Object.keys(platformQuality)}
+          series={[
+            {
+              name: "avg quality",
+              values: Object.values(platformQuality).map(
+                (scores) => scores.reduce((a, b) => a + b, 0) / scores.length,
+              ),
+            },
+          ]}
+        />
+      </ChartFrame>
+      <ChartFrame title="Documents by source type" caption="polar view">
+        <PolarAreaChart items={Object.entries(docTypeCounts).map(([label, value]) => ({ label, value }))} />
+      </ChartFrame>
+      <ChartFrame title="Asset media mix" caption="images vs video">
+        <RadialBarChart
+          items={Object.entries(assetTypeCounts).map(([label, value]) => ({
+            label,
+            value: assets.length ? Math.round((value / assets.length) * 100) : 0,
+          }))}
+        />
+      </ChartFrame>
+      <ChartFrame title="Asset pipeline status" caption="generation status">
+        <GroupedBarChart
+          groups={Object.keys(assetStatusCounts)}
+          series={[{ name: "assets", values: Object.values(assetStatusCounts) }]}
+        />
+      </ChartFrame>
+      <ChartFrame title="Content mix by platform" caption="treemap" className="span-2">
+        <TreemapChart items={Object.entries(platformCounts).map(([label, value]) => ({ label, value }))} />
+      </ChartFrame>
+      <ChartFrame title="Revision range per campaign" caption="derived from revision counters">
+        <CandlestickChart
+          bars={campaigns.slice(0, 8).map((c) => ({
+            label: c.name.slice(0, 6),
+            low: 0,
+            high: c.current_revision,
+            open: 0,
+            close: c.current_revision,
+          }))}
+        />
+      </ChartFrame>
+      <ChartFrame title="Sources vs. campaigns" caption="waterfall of workspace growth">
+        <WaterfallChart
+          steps={[
+            { label: "Sources", delta: documents.length },
+            { label: "Campaigns", delta: campaigns.length },
+            { label: "Approved", delta: approvedCount },
+            { label: "Assets", delta: assets.length },
+          ]}
+        />
+      </ChartFrame>
+      <ChartFrame title="Campaign volume + quality combo" caption="count + latest quality">
+        <ComboChart
+          bars={campaignDays.map(([, v]) => v)}
+          line={campaignDays.map(() => (variantQuality.length ? variantQuality[0] : 0))}
+        />
+      </ChartFrame>
+      <ChartFrame title="Approval completion" caption="ring">
+        <ProgressRing value={approvalRate} label="approval rate" />
+      </ChartFrame>
+      <ChartFrame title="Platform activity" caption="bubble size = campaign count">
+        <BubbleChart
+          points={Object.entries(platformCounts).map(([label, value], i) => ({
+            label,
+            x: i,
+            y: value,
+            size: value,
+          }))}
+        />
+      </ChartFrame>
+      <ChartFrame title="Source status heatmap" caption="documents × status">
+        <HeatmapChart
+          rows={Object.keys(docTypeCounts)}
+          cols={["indexed", "pending", "failed"]}
+          values={Object.keys(docTypeCounts).map((type) => [
+            documents.filter((d) => d.source_type === type && d.status === "indexed").length,
+            documents.filter((d) => d.source_type === type && d.status === "pending").length,
+            documents.filter((d) => d.source_type === type && d.status === "failed").length,
+          ])}
+        />
+      </ChartFrame>
+      </div>
+    </div>
+  );
   const content =
     view === "overview"
       ? overview
@@ -1217,7 +1493,9 @@ export function LiveWorkspace() {
           ? brainView
           : view === "media"
             ? mediaView
-            : publishingView;
+            : view === "analytics"
+              ? analyticsView
+              : publishingView;
   const paletteItems = [
     ...nav.map((item) => ({
       label: `Open ${item.label}`,
@@ -1336,6 +1614,7 @@ export function LiveWorkspace() {
             </div>
           </header>
           <div
+            ref={contentRef}
             className="live-content"
             style={{ "--glass-alpha": scrolled ? 0.82 : 0.62 } as CSSProperties}
           >
@@ -1348,7 +1627,7 @@ export function LiveWorkspace() {
                   animate="show"
                   exit="exit"
                 >
-                  <Check size={15} /> {notice}
+                  <Check size={15} /> <TypewriterText text={notice} speed={14} />
                   <button onClick={() => setNotice(null)}>
                     <X size={14} />
                   </button>
