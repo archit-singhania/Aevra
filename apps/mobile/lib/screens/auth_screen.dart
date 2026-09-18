@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
@@ -63,28 +62,57 @@ class _AuthScreenState extends State<AuthScreen> {
               animation: widget.state,
               builder: (context, _) {
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(22, 40, 22, 32),
+                  padding: const EdgeInsets.fromLTRB(
+                      AevraSpace.lg, AevraSpace.xxl, AevraSpace.lg, AevraSpace.xl),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AevraWordmark(markSize: 30, fontSize: 18),
-                      const SizedBox(height: 30),
+                      const AevraWordmark(markSize: 30, fontSize: 17),
+                      const SizedBox(height: AevraSpace.xxl),
+                      Text('CAMPAIGN INTELLIGENCE', style: AevraType.eyebrow()),
+                      const SizedBox(height: AevraSpace.sm),
                       Text(
-                        'Make every campaign feel\nlike your sharpest team\nmember made it.',
-                        style: GoogleFonts.fraunces(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w500,
-                          height: 1.06,
-                          letterSpacing: -0.025,
-                          color: AevraColors.text,
+                        'Every campaign,\nas sharp as your\nbest work.',
+                        style: AevraType.display(34),
+                      ),
+                      const SizedBox(height: AevraSpace.md),
+                      const Text(
+                        'Approved brand knowledge in. Evidence-backed, human-approved content out. Nothing publishes without a person saying yes.',
+                        style: TextStyle(fontSize: 13.5, height: 1.6, color: AevraColors.textSoft),
+                      ),
+                      const SizedBox(height: AevraSpace.lg),
+                      // Three proof points, set as a mono rail. On a phone
+                      // these do the job the web hero's feature column does.
+                      ...[
+                        'Grounded in your own sources',
+                        'Human approval on every variant',
+                        'One workspace, every channel',
+                      ].map(
+                        (point) => Padding(
+                          padding: const EdgeInsets.only(bottom: AevraSpace.xs),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 4,
+                                margin: const EdgeInsets.only(top: 6, right: AevraSpace.sm),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AevraColors.accent,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  point,
+                                  style: const TextStyle(fontSize: 12, color: AevraColors.muted),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Turn approved brand knowledge into evidence-backed, human-approved content operations.',
-                        style: TextStyle(fontSize: 13, height: 1.5, color: AevraColors.muted),
-                      ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: AevraSpace.xl),
                       // The one surface on this screen, so it gets the top
                       // tier — but no tilt. A tap-down tilt recogniser here
                       // would enter the gesture arena against every TextField
@@ -92,8 +120,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       // field. Depth on a form isn't worth that.
                       GlassSurface(
                         elevation: GlassElevation.lifted,
-                        radius: 16,
-                        padding: const EdgeInsets.all(20),
+                        radius: AevraRadius.lg,
+                        padding: const EdgeInsets.all(AevraSpace.lg),
                         adaptive: false,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,56 +129,44 @@ class _AuthScreenState extends State<AuthScreen> {
                             Row(
                               children: [
                                 _Tab(label: 'Sign in', active: isLogin, onTap: () => setState(() => isLogin = true)),
-                                const SizedBox(width: 18),
+                                const SizedBox(width: AevraSpace.lg),
                                 _Tab(label: 'Create workspace', active: !isLogin, onTap: () => setState(() => isLogin = false)),
                               ],
                             ),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: AevraSpace.lg),
                             Text(
-                              isLogin ? 'Welcome back' : 'Start your Aevra workspace',
-                              style: GoogleFonts.fraunces(
-                                fontSize: 19,
-                                fontWeight: FontWeight.w500,
-                                color: AevraColors.text,
-                              ),
+                              isLogin ? 'Welcome back' : 'Start your workspace',
+                              style: AevraType.display(21),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AevraSpace.md),
                             if (widget.state.error != null) ...[
                               _ErrorBanner(message: widget.state.error!),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: AevraSpace.sm),
                             ],
                             if (!isLogin) ...[
                               _Field(label: 'Your name', controller: _name),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: AevraSpace.sm),
                               _Field(label: 'Organization', controller: _org),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: AevraSpace.sm),
                               _Field(label: 'Workspace', controller: _workspaceName),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: AevraSpace.sm),
                             ],
                             _Field(label: 'Email', controller: _email, keyboardType: TextInputType.emailAddress),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AevraSpace.sm),
                             _Field(label: 'Password', controller: _password, obscure: true),
-                            const SizedBox(height: 18),
+                            const SizedBox(height: AevraSpace.lg),
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton(
                                 onPressed: widget.state.loading ? null : _submit,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AevraColors.lime,
-                                  foregroundColor: AevraColors.onAccent,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-                                ),
                                 child: widget.state.loading
                                     ? const SizedBox(
                                         width: 18,
                                         height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: AevraColors.onAccent),
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2, color: AevraColors.accentInk),
                                       )
-                                    : Text(
-                                        isLogin ? 'Enter workspace' : 'Create workspace',
-                                        style: const TextStyle(fontWeight: FontWeight.w600),
-                                      ),
+                                    : Text(isLogin ? 'Enter workspace' : 'Create workspace'),
                               ),
                             ),
                           ],
@@ -179,21 +195,31 @@ class _Tab extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      // Opaque hit target: without this the gesture only lands on the glyphs
+      // themselves, and the gaps between letters do nothing.
+      behavior: HitTestBehavior.opaque,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: active ? AevraColors.lime : AevraColors.muted,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.1,
+              color: active ? AevraColors.text : AevraColors.muted,
             ),
           ),
-          const SizedBox(height: 6),
-          Container(
+          const SizedBox(height: AevraSpace.xs),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
             height: 2,
-            width: 40,
-            color: active ? AevraColors.lime : Colors.transparent,
+            width: active ? 28 : 0,
+            decoration: BoxDecoration(
+              color: AevraColors.accent,
+              borderRadius: BorderRadius.circular(AevraRadius.pill),
+            ),
           ),
         ],
       ),
@@ -216,34 +242,20 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Field chrome now comes entirely from `inputDecorationTheme`, so a
+    // change to field radius, fill or focus colour lands here and in the
+    // command palette at the same time instead of drifting apart.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: AevraColors.muted2)),
-        const SizedBox(height: 6),
+        Text(label.toUpperCase(), style: AevraType.eyebrow(color: AevraColors.muted2)),
+        const SizedBox(height: AevraSpace.xs),
         TextField(
           controller: controller,
           obscureText: obscure,
           keyboardType: keyboardType,
-          style: const TextStyle(fontSize: 13, color: AevraColors.text),
-          decoration: InputDecoration(
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            filled: true,
-            fillColor: const Color(0xFF0B1011),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(9),
-              borderSide: const BorderSide(color: AevraColors.line),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(9),
-              borderSide: const BorderSide(color: AevraColors.line),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(9),
-              borderSide: const BorderSide(color: AevraColors.lime),
-            ),
-          ),
+          cursorColor: AevraColors.accent,
+          style: const TextStyle(fontSize: 13.5, color: AevraColors.text),
         ),
       ],
     );
@@ -258,12 +270,25 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AevraSpace.sm, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF6262).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(9),
+        color: AevraColors.rose.withValues(alpha: 0.09),
+        border: Border.all(color: AevraColors.rose.withValues(alpha: 0.22)),
+        borderRadius: BorderRadius.circular(AevraRadius.sm),
       ),
-      child: Text(message, style: const TextStyle(fontSize: 11, color: Color(0xFFFFB4AA))),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline_rounded, size: 15, color: AevraColors.rose),
+          const SizedBox(width: AevraSpace.xs),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 11.5, height: 1.45, color: AevraColors.rose),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

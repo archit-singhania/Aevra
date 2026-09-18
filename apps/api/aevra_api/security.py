@@ -88,6 +88,7 @@ def decode_oauth_state(state: str, settings: Settings) -> dict[str, str]:
             "user_id": str(user_id),
             "workspace_id": str(workspace_id),
             "provider": provider,
+            "nonce": nonce,
         }
     except (InvalidTokenError, KeyError, TypeError, ValueError) as exc:
         raise AuthenticationError("Invalid or expired OAuth state") from exc

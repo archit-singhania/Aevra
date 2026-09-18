@@ -264,3 +264,310 @@ class XPublisher(PlatformRestPublisher):
 
 class YouTubePublisher(PlatformRestPublisher):
     platform = "youtube"
+
+
+class MetaFacebookPublisher:
+    """Facebook Page feed publisher using the Graph API."""
+
+    platform = "facebook"
+
+    def __init__(
+        self,
+        *,
+        base_url: str = "https://graph.facebook.com/v23.0",
+        client: httpx.Client | None = None,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.client = client or httpx.Client(timeout=30.0)
+
+    def publish(self, request: PublishRequest, *, access_token: str) -> PublishResult:
+        data: dict[str, str] = {"message": request.text}
+        if request.media_urls:
+            data["link"] = request.media_urls[0]
+        try:
+            response = self.client.post(
+                f"{self.base_url}/{request.account_id}/feed",
+                data=data,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError("Facebook transport failed", retryable=True) from error
+        _raise_graph_error(response, "Facebook")
+        body = response.json()
+        external_id = body.get("id")
+        if not external_id:
+            raise PublisherError("Facebook returned no post identifier", retryable=True)
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            str(external_id),
+            f"https://www.facebook.com/{external_id}",
+            datetime.now(UTC),
+            self.platform,
+            {"http_status": response.status_code},
+        )
+
+    def verify(self, external_post_id: str, *, access_token: str) -> PublishResult:
+        try:
+            response = self.client.get(
+                f"{self.base_url}/{external_post_id}",
+                params={"fields": "id"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError(
+                "Facebook verification transport failed", retryable=True
+            ) from error
+        _raise_graph_error(response, "Facebook verification")
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            external_post_id,
+            f"https://www.facebook.com/{external_post_id}",
+            datetime.now(UTC),
+            self.platform,
+            {"verified": True, "http_status": response.status_code},
+        )
+
+
+class InstagramGraphPublisher:
+    """Instagram Graph API container-create/container-publish workflow."""
+
+    platform = "instagram"
+
+    def __init__(
+        self,
+        *,
+        base_url: str = "https://graph.facebook.com/v23.0",
+        client: httpx.Client | None = None,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.client = client or httpx.Client(timeout=30.0)
+
+    def publish(self, request: PublishRequest, *, access_token: str) -> PublishResult:
+        if not request.media_urls:
+            raise PublisherError("Instagram requires an image or video URL", retryable=False)
+        media_url = request.media_urls[0]
+        is_video = media_url.lower().split("?", 1)[0].endswith((".mp4", ".mov", ".m4v"))
+        data: dict[str, str] = {
+            "caption": request.text,
+            "media_type": "REELS" if is_video else "IMAGE",
+            ("video_url" if is_video else "image_url"): media_url,
+        }
+        try:
+            container = self.client.post(
+                f"{self.base_url}/{request.account_id}/media",
+                data=data,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            _raise_graph_error(container, "Instagram media container")
+            creation_id = str(container.json().get("id", ""))
+            if not creation_id:
+                raise PublisherError("Instagram returned no media container id", retryable=True)
+            published = self.client.post(
+                f"{self.base_url}/{request.account_id}/media_publish",
+                data={"creation_id": creation_id},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError("Instagram transport failed", retryable=True) from error
+        _raise_graph_error(published, "Instagram publish")
+        external_id = str(published.json().get("id", ""))
+        if not external_id:
+            raise PublisherError("Instagram returned no media id", retryable=True)
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            external_id,
+            f"https://www.instagram.com/p/{external_id}/",
+            datetime.now(UTC),
+            self.platform,
+            {"http_status": published.status_code, "container_id": creation_id},
+        )
+
+    def verify(self, external_post_id: str, *, access_token: str) -> PublishResult:
+        try:
+            response = self.client.get(
+                f"{self.base_url}/{external_post_id}",
+                params={"fields": "id"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError(
+                "Instagram verification transport failed", retryable=True
+            ) from error
+        _raise_graph_error(response, "Instagram verification")
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            external_post_id,
+            f"https://www.instagram.com/p/{external_post_id}/",
+            datetime.now(UTC),
+            self.platform,
+            {"verified": True, "http_status": response.status_code},
+        )
+
+
+class ThreadsGraphPublisher:
+    """Threads API two-step container creation and publishing."""
+
+    platform = "threads"
+
+    def __init__(
+        self,
+        *,
+        base_url: str = "https://graph.threads.net/v1.0",
+        client: httpx.Client | None = None,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.client = client or httpx.Client(timeout=30.0)
+
+    def publish(self, request: PublishRequest, *, access_token: str) -> PublishResult:
+        data: dict[str, str] = {"media_type": "TEXT", "text": request.text}
+        if request.media_urls:
+            media_url = request.media_urls[0]
+            data["media_type"] = (
+                "VIDEO"
+                if media_url.lower().split("?", 1)[0].endswith((".mp4", ".mov"))
+                else "IMAGE"
+            )
+            data["video_url" if data["media_type"] == "VIDEO" else "image_url"] = media_url
+        try:
+            container = self.client.post(
+                f"{self.base_url}/{request.account_id}/threads",
+                data=data,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            _raise_graph_error(container, "Threads container")
+            creation_id = str(container.json().get("id", ""))
+            published = self.client.post(
+                f"{self.base_url}/{request.account_id}/threads_publish",
+                data={"creation_id": creation_id},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError("Threads transport failed", retryable=True) from error
+        _raise_graph_error(published, "Threads publish")
+        external_id = str(published.json().get("id", ""))
+        if not external_id:
+            raise PublisherError("Threads returned no post identifier", retryable=True)
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            external_id,
+            f"https://www.threads.net/post/{external_id}",
+            datetime.now(UTC),
+            self.platform,
+            {"http_status": published.status_code, "container_id": creation_id},
+        )
+
+    def verify(self, external_post_id: str, *, access_token: str) -> PublishResult:
+        try:
+            response = self.client.get(
+                f"{self.base_url}/{external_post_id}",
+                params={"fields": "id"},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError("Threads verification transport failed", retryable=True) from error
+        _raise_graph_error(response, "Threads verification")
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            external_post_id,
+            f"https://www.threads.net/post/{external_post_id}",
+            datetime.now(UTC),
+            self.platform,
+            {"verified": True, "http_status": response.status_code},
+        )
+
+
+class YouTubeDataPublisher:
+    """YouTube Data API resumable upload publisher."""
+
+    platform = "youtube"
+
+    def __init__(
+        self, *, base_url: str = "https://www.googleapis.com", client: httpx.Client | None = None
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.client = client or httpx.Client(timeout=120.0)
+
+    def publish(self, request: PublishRequest, *, access_token: str) -> PublishResult:
+        if not request.media_urls:
+            raise PublisherError("YouTube requires a video URL", retryable=False)
+        try:
+            media = self.client.get(request.media_urls[0])
+            if media.status_code >= 400:
+                raise PublisherError("YouTube source media could not be downloaded", retryable=True)
+            content_type = media.headers.get("content-type", "video/mp4")
+            metadata = {
+                "snippet": {"title": request.text[:100], "description": request.text},
+                "status": {"privacyStatus": "private"},
+            }
+            start = self.client.post(
+                f"{self.base_url}/upload/youtube/v3/videos",
+                params={"part": "snippet,status"},
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json; charset=UTF-8",
+                    "X-Upload-Content-Type": content_type,
+                    "X-Upload-Content-Length": str(len(media.content)),
+                },
+                json=metadata,
+            )
+            if start.status_code >= 400 or not start.headers.get("location"):
+                raise PublisherError(
+                    "YouTube upload session could not be created",
+                    retryable=start.status_code >= 500,
+                )
+            uploaded = self.client.put(
+                start.headers["location"],
+                headers={"Authorization": f"Bearer {access_token}", "Content-Type": content_type},
+                content=media.content,
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError("YouTube transport failed", retryable=True) from error
+        if uploaded.status_code >= 400:
+            raise PublisherError(
+                "YouTube rejected the video", retryable=uploaded.status_code >= 500
+            )
+        external_id = str(uploaded.json().get("id", ""))
+        if not external_id:
+            raise PublisherError("YouTube returned no video identifier", retryable=True)
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            external_id,
+            f"https://www.youtube.com/watch?v={external_id}",
+            datetime.now(UTC),
+            self.platform,
+            {"http_status": uploaded.status_code},
+        )
+
+    def verify(self, external_post_id: str, *, access_token: str) -> PublishResult:
+        try:
+            response = self.client.get(
+                f"{self.base_url}/youtube/v3/videos",
+                params={"part": "id", "id": external_post_id},
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        except httpx.HTTPError as error:
+            raise PublisherError("YouTube verification transport failed", retryable=True) from error
+        if response.status_code >= 400:
+            raise PublisherError(
+                "YouTube verification was rejected", retryable=response.status_code >= 500
+            )
+        items = response.json().get("items", [])
+        if not items:
+            raise PublisherError("YouTube video was not found during verification")
+        return PublishResult(
+            PublishStatus.PUBLISHED,
+            external_post_id,
+            f"https://www.youtube.com/watch?v={external_post_id}",
+            datetime.now(UTC),
+            self.platform,
+            {"verified": True, "http_status": response.status_code},
+        )
+
+
+def _raise_graph_error(response: httpx.Response, provider: str) -> None:
+    if response.status_code in {401, 403}:
+        raise PublisherError(f"{provider} authorization was rejected", retryable=False)
+    if response.status_code == 429 or response.status_code >= 500:
+        raise PublisherError(f"{provider} is temporarily unavailable", retryable=True)
+    if response.status_code >= 400:
+        raise PublisherError(f"{provider} rejected the request", retryable=False)

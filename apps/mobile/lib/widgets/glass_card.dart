@@ -12,7 +12,7 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
+    this.padding = const EdgeInsets.all(AevraSpace.md),
     this.borderColor,
     this.elevation = GlassElevation.raised,
   });
@@ -34,42 +34,60 @@ class GlassCard extends StatelessWidget {
 }
 
 /// A small circular progress ring used for scores (mirrors `.score-ring`).
+///
+/// The track is a token rather than a hardcoded grey, and the value animates
+/// from zero on mount so a score arrives rather than appearing — the same
+/// treatment every other number in the app gets.
 class ScoreRing extends StatelessWidget {
-  const ScoreRing({super.key, required this.value, this.label = '/100', this.color = AevraColors.cyan});
+  const ScoreRing({
+    super.key,
+    required this.value,
+    this.label = '/100',
+    this.color = AevraColors.frost,
+    this.size = 66,
+  });
 
   final int value;
   final String label;
   final Color color;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 66,
-      height: 66,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox(
-            width: 66,
-            height: 66,
-            child: CircularProgressIndicator(
-              value: value / 100,
-              strokeWidth: 4,
-              backgroundColor: const Color(0xFF252B34),
-              valueColor: AlwaysStoppedAnimation(color),
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$value',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+      width: size,
+      height: size,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: (value / 100).clamp(0.0, 1.0)),
+        duration: const Duration(milliseconds: 820),
+        curve: Curves.easeOutCubic,
+        builder: (context, progress, _) => Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: size,
+              height: size,
+              child: CircularProgressIndicator(
+                value: progress,
+                strokeWidth: size * 0.055,
+                strokeCap: StrokeCap.round,
+                backgroundColor: AevraColors.surface4,
+                valueColor: AlwaysStoppedAnimation(color),
               ),
-              Text(label, style: const TextStyle(fontSize: 8, color: AevraColors.muted2)),
-            ],
-          ),
-        ],
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  (progress * 100).round().toString(),
+                  style: AevraType.metric(size * 0.28),
+                ),
+                const SizedBox(height: 2),
+                Text(label, style: AevraType.mono(size: size * 0.125)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

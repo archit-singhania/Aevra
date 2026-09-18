@@ -1,30 +1,73 @@
-// This is a basic Flutter widget test.
+// Smoke tests for the Nocturne design system.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// These deliberately do NOT pump `AevraApp`. That widget calls
+// `AppState.hydrate()` on init, which reads `flutter_secure_storage` over a
+// platform channel; in a bare `flutter test` run there is no platform on the
+// other end, so the test would depend on mocking an unrelated plugin just to
+// prove that a theme exists. Testing the theme and the brand mark directly
+// covers the same ground without that coupling.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:aevra_mobile/main.dart';
+import 'package:aevra_mobile/theme/aevra_theme.dart';
+import 'package:aevra_mobile/widgets/aevra_logo.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('AevraTheme', () {
+    test('dark theme exposes the Nocturne tokens through its ColorScheme', () {
+      final scheme = AevraTheme.dark.colorScheme;
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      expect(scheme.brightness, Brightness.dark);
+      expect(scheme.primary, AevraColors.accent);
+      expect(scheme.onPrimary, AevraColors.accentInk);
+      expect(scheme.secondary, AevraColors.jade);
+      expect(scheme.tertiary, AevraColors.frost);
+      expect(scheme.error, AevraColors.rose);
+      expect(AevraTheme.dark.scaffoldBackgroundColor, AevraColors.bg);
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('light theme is the same system, not a different one', () {
+      final scheme = AevraTheme.light.colorScheme;
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+      expect(scheme.brightness, Brightness.light);
+      expect(scheme.primary, AevraLightColors.accent);
+      expect(scheme.secondary, AevraLightColors.jade);
+      expect(scheme.tertiary, AevraLightColors.frost);
+      expect(AevraTheme.light.scaffoldBackgroundColor, AevraLightColors.bg);
+    });
+
+    test('both themes suppress the Material ink splash', () {
+      for (final theme in [AevraTheme.dark, AevraTheme.light]) {
+        expect(theme.splashFactory, NoSplash.splashFactory);
+        expect(theme.highlightColor, Colors.transparent);
+      }
+    });
+  });
+
+  group('Brand mark', () {
+    testWidgets('renders at the size it is given', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AevraTheme.dark,
+          home: const Scaffold(body: Center(child: AevraMark(size: 44))),
+        ),
+      );
+
+      expect(find.byType(AevraMark), findsOneWidget);
+      expect(tester.getSize(find.byType(AevraMark)), const Size(44, 44));
+    });
+
+    testWidgets('wordmark pairs the mark with the AEVRA lockup', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AevraTheme.dark,
+          home: const Scaffold(body: Center(child: AevraWordmark())),
+        ),
+      );
+
+      expect(find.byType(AevraMark), findsOneWidget);
+      expect(find.text('AEVRA'), findsOneWidget);
+    });
   });
 }

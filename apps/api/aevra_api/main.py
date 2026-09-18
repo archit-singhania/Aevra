@@ -1,7 +1,10 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
+from sqlalchemy import text
+from starlette.middleware.cors import CORSMiddleware
 
+from aevra_api.api.dependencies import SessionDep, SettingsDep
 from aevra_api.api.routes.auth import router as auth_router
 from aevra_api.api.routes.brands import router as brands_router
 from aevra_api.api.routes.campaigns import router as campaigns_router
@@ -13,6 +16,7 @@ from aevra_api.api.routes.oauth import router as oauth_router
 from aevra_api.api.routes.operations import router as operations_router
 from aevra_api.api.routes.publishing import router as publishing_router
 from aevra_api.api.routes.workspaces import router as workspaces_router
+from aevra_api.config import get_settings
 from aevra_api.domain.errors import (
     AuthenticationError,
     ConflictError,
@@ -37,6 +41,19 @@ app = FastAPI(
     description="Deterministic application boundary for Aevra.",
 )
 app.add_middleware(RequestContextMiddleware)
+_cors_origins = [
+    origin.strip().rstrip("/")
+    for origin in get_settings().allowed_origins.split(",")
+    if origin.strip()
+]
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    )
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(workspaces_router, prefix="/api/v1")
@@ -102,6 +119,30 @@ def handle_generation_error(_request: Request, exc: GenerationError) -> JSONResp
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
     return HealthResponse(status="ok", service="aevra-api", phase=12)
+
+
+@app.get("/ready", tags=["system"])
+def readiness(session: SessionDep, settings: SettingsDep) -> JSONResponse:
+    """Readiness probe for database and production Redis dependencies."""
+    checks: dict[str, str] = {}
+    try:
+        session.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception:
+        checks["database"] = "unavailable"
+    if settings.env.lower() in {"staging", "production"} or settings.enable_celery:
+        try:
+            from redis import Redis  # type: ignore[import-not-found]
+
+            Redis.from_url(settings.redis_url, socket_connect_timeout=2).ping()
+            checks["redis"] = "ok"
+        except Exception:
+            checks["redis"] = "unavailable"
+    ready = all(value == "ok" for value in checks.values())
+    return JSONResponse(
+        status_code=status.HTTP_200_OK if ready else status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"status": "ready" if ready else "not_ready", "checks": checks},
+    )
 
 
 @app.get("/metrics", include_in_schema=False)

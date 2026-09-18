@@ -90,22 +90,27 @@ const BACKDROP_FRAG = /* glsl */ `
     float n2 = snoise(vec3(aspectUv * 2.0 + 5.0, t * 1.15));
     float field = n1 * 0.65 + n2 * 0.35;
 
-    vec3 bg = vec3(0.027, 0.035, 0.051);
-    vec3 brass = vec3(0.788, 0.643, 0.361);
-    vec3 inkEmerald = vec3(0.247, 0.365, 0.322);
-    vec3 platinum = vec3(0.722, 0.745, 0.780);
+    // Nocturne palette, matching --bg / --accent / --jade / --frost in
+    // globals.css and apps/mobile/shaders/background.frag.
+    vec3 bg = vec3(0.024, 0.027, 0.039);
+    vec3 copper = vec3(0.769, 0.522, 0.353);
+    vec3 jade = vec3(0.306, 0.612, 0.510);
+    vec3 frost = vec3(0.561, 0.655, 0.761);
 
-    float brassMask = smoothstep(0.18, 0.62, field) * smoothstep(0.05, 0.55, 1.0 - length(aspectUv - vec2(0.72, 0.28)));
-    float emeraldMask = smoothstep(0.15, 0.6, -field + 0.15) * smoothstep(0.05, 0.65, 1.0 - length(aspectUv - vec2(0.22, 0.78)));
-    float platinumMask = smoothstep(0.2, 0.58, field * 0.6 + 0.2) * smoothstep(0.05, 0.6, 1.0 - length(aspectUv - vec2(0.5, 0.5)));
+    float copperMask = smoothstep(0.16, 0.60, field) * smoothstep(0.05, 0.56, 1.0 - length(aspectUv - vec2(0.76, 0.24)));
+    float jadeMask = smoothstep(0.14, 0.58, -field + 0.15) * smoothstep(0.05, 0.66, 1.0 - length(aspectUv - vec2(0.20, 0.80)));
+    float frostMask = smoothstep(0.20, 0.58, field * 0.6 + 0.2) * smoothstep(0.05, 0.62, 1.0 - length(aspectUv - vec2(0.5, 0.52)));
 
     vec3 color = bg;
-    color += brass * brassMask * 0.10;
-    color += inkEmerald * emeraldMask * 0.09;
-    color += platinum * platinumMask * 0.05;
+    color += copper * copperMask * 0.115;
+    color += jade * jadeMask * 0.085;
+    color += frost * frostMask * 0.042;
 
-    float vignette = smoothstep(1.05, 0.25, length(aspectUv - 0.5));
-    color *= mix(0.75, 1.0, vignette);
+    // A deeper vignette than before: content sits in glass panels with their
+    // own light, and pulling the edges down is what makes those panels look
+    // lit rather than merely lighter than the wall behind them.
+    float vignette = smoothstep(1.08, 0.22, length(aspectUv - 0.5));
+    color *= mix(0.62, 1.0, vignette);
 
     float grain = fract(sin(dot(uv * uResolution.xy, vec2(12.9898, 78.233))) * 43758.5453);
     color += (grain - 0.5) * 0.012;
@@ -115,7 +120,7 @@ const BACKDROP_FRAG = /* glsl */ `
 `;
 
 /* ------------------------------------------------------------------ *
- * Depth pass — instanced brass/platinum shards drifting in real 3D.
+ * Depth pass — instanced copper/frost shards drifting in real 3D.
  * One draw call for every shard via InstancedMesh; the per-instance
  * animation runs on the GPU from a static `aSeed` attribute, so the CPU
  * touches nothing per frame except two uniforms.
@@ -182,11 +187,14 @@ const SHARD_FRAG = /* glsl */ `
   uniform float uIntensity;
 
   void main() {
-    vec3 brass = vec3(0.788, 0.643, 0.361);
-    vec3 platinum = vec3(0.722, 0.745, 0.780);
-    vec3 emerald = vec3(0.247, 0.365, 0.322);
+    vec3 copper = vec3(0.769, 0.522, 0.353);
+    vec3 frost = vec3(0.561, 0.655, 0.761);
+    vec3 jade = vec3(0.306, 0.612, 0.510);
 
-    vec3 tint = vTint < 0.55 ? brass : (vTint < 0.85 ? platinum : emerald);
+    // Weighted toward frost rather than copper: the shards are reflected
+    // light on glass, and a field of warm ones would compete with the
+    // accent instead of sitting behind it.
+    vec3 tint = vTint < 0.34 ? copper : (vTint < 0.86 ? frost : jade);
 
     // Far shards dissolve into the backdrop instead of popping at the fog
     // plane — cheaper and softer than real depth-of-field.

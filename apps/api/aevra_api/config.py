@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     token_vault_key: str | None = Field(default=None, min_length=32)
     auth_rate_limit_attempts: int = Field(default=10, ge=3, le=100)
     auth_rate_limit_window_seconds: int = Field(default=60, ge=10, le=3600)
+    api_rate_limit_attempts: int = Field(default=120, ge=20, le=10_000)
+    api_rate_limit_window_seconds: int = Field(default=60, ge=10, le=3600)
+    allowed_origins: str = ""
+    enable_redis_rate_limit: bool = True
+    redis_rate_limit_prefix: str = "aevra:rate-limit"
     database_url: str = "sqlite:///./aevra.db"
     seed_email: str = "owner@aevra.local"
     seed_password: str = Field(default="AevraLocalOnly!2026", min_length=12)

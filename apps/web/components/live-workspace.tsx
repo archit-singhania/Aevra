@@ -87,6 +87,7 @@ import {
   type KnowledgeDocument,
   type MediaAsset,
   type Platform,
+  type PostMetric,
   type ScheduledPost,
   type SocialAccount,
   type User,
@@ -189,8 +190,10 @@ export function LiveWorkspace() {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [scheduled, setScheduled] = useState<ScheduledPost[]>([]);
+  const [metrics, setMetrics] = useState<PostMetric[]>([]);
   const [selected, setSelected] = useState("");
   const [variants, setVariants] = useState<ContentVariant[]>([]);
+  const [streamPreview, setStreamPreview] = useState("");
   const [evidence, setEvidence] = useState<
     Array<{ chunk_id: string; document_title: string; score: number; excerpt: string }>
   >([]);
@@ -276,6 +279,7 @@ export function LiveWorkspace() {
     setAssets([]);
     setAccounts([]);
     setScheduled([]);
+    setMetrics([]);
     setVariants([]);
   }, []);
   const run = async (name: string, task: () => Promise<void>) => {
@@ -309,21 +313,30 @@ export function LiveWorkspace() {
         // unavailable media/metrics endpoint previously left the entire
         // overview in a blank loading state. Each panel now degrades to an
         // honest empty collection while identity and navigation stay usable.
-        const [nextBrands, nextCampaigns, nextDocuments, nextAssets, nextAccounts, nextScheduled] =
-          await Promise.all([
-            withFallback(api.brands(accessToken, nextWorkspace.id), []),
-            withFallback(api.campaigns(accessToken, nextWorkspace.id), []),
-            withFallback(api.documents(accessToken, nextWorkspace.id), []),
-            withFallback(api.media(accessToken, nextWorkspace.id), []),
-            withFallback(api.accounts(accessToken, nextWorkspace.id), []),
-            withFallback(api.scheduled(accessToken, nextWorkspace.id), []),
-          ]);
+        const [
+          nextBrands,
+          nextCampaigns,
+          nextDocuments,
+          nextAssets,
+          nextAccounts,
+          nextScheduled,
+          nextMetrics,
+        ] = await Promise.all([
+          withFallback(api.brands(accessToken, nextWorkspace.id), []),
+          withFallback(api.campaigns(accessToken, nextWorkspace.id), []),
+          withFallback(api.documents(accessToken, nextWorkspace.id), []),
+          withFallback(api.media(accessToken, nextWorkspace.id), []),
+          withFallback(api.accounts(accessToken, nextWorkspace.id), []),
+          withFallback(api.scheduled(accessToken, nextWorkspace.id), []),
+          withFallback(api.metrics(accessToken, nextWorkspace.id), []),
+        ]);
         setBrands(nextBrands);
         setCampaigns(nextCampaigns);
         setDocuments(nextDocuments);
         setAssets(nextAssets);
         setAccounts(nextAccounts);
         setScheduled(nextScheduled);
+        setMetrics(nextMetrics);
         setSelected((value) => value || nextCampaigns[0]?.id || "");
         setMediaCampaign((value) => value || nextCampaigns[0]?.id || "");
         setPublishCampaign((value) => value || nextCampaigns[0]?.id || "");
@@ -447,7 +460,22 @@ export function LiveWorkspace() {
         media_types: ["text", "image"],
         publishing_mode: "manual",
       });
-      const generated = await api.generateCampaign(token, workspace.id, campaign.id);
+      const [generated] = await Promise.all([
+        api.generateCampaign(token, workspace.id, campaign.id),
+        api
+          .streamModel(
+            token,
+            workspace.id,
+            {
+              prompt: `Create a concise campaign direction for ${campaignName}. Goal: ${goal}. Audience: ${audience}. Product: ${product}.`,
+              system_prompt:
+                "You are VAE's campaign strategist. Keep the direction grounded, concise, and reviewable.",
+              max_tokens: 500,
+            },
+            setStreamPreview,
+          )
+          .catch(() => ""),
+      ]);
       setCampaigns((items) => [generated.campaign, ...items]);
       setSelected(campaign.id);
       setMediaCampaign(campaign.id);
@@ -576,6 +604,33 @@ export function LiveWorkspace() {
     await run(`oauth-${provider}`, async () => {
       const result = await api.oauthAuthorize(token, workspace.id, provider);
       window.location.assign(result.authorization_url);
+    });
+  };
+  const refreshAccount = async (account: SocialAccount) => {
+    if (!token || !workspace || (account.platform !== "linkedin" && account.platform !== "youtube"))
+      return;
+    const provider = account.platform;
+    await run(`refresh-${account.id}`, async () => {
+      await api.oauthRefresh(token, workspace.id, provider, account.id);
+      setAccounts((items) =>
+        items.map((item) => (item.id === account.id ? { ...item, status: "connected" } : item)),
+      );
+      setNotice(`${account.display_name} token refreshed.`);
+    });
+  };
+  const revokeAccount = async (account: SocialAccount) => {
+    if (!token || !workspace) return;
+    await run(`revoke-${account.id}`, async () => {
+      await api.oauthRevoke(
+        token,
+        workspace.id,
+        account.platform as Exclude<Platform, "x">,
+        account.id,
+      );
+      setAccounts((items) =>
+        items.map((item) => (item.id === account.id ? { ...item, status: "revoked" } : item)),
+      );
+      setNotice(`${account.display_name} disconnected.`);
     });
   };
   const publish = async (shouldSchedule: boolean) => {
@@ -807,6 +862,47 @@ export function LiveWorkspace() {
           );
         })}
       </Reveal>
+      <section className="live-panel overview-metrics">
+        <div className="live-panel-head">
+          <div>
+            <p className="live-kicker">Distribution pulse</p>
+            <h2>Provider performance</h2>
+          </div>
+          <button type="button" className="text-button" onClick={() => setView("analytics")}>
+            Open analytics <ArrowRight size={14} />
+          </button>
+        </div>
+        {metrics.length ? (
+          <div className="overview-metric-grid">
+            <div>
+              <strong>
+                {metrics.reduce((sum, item) => sum + item.impressions, 0).toLocaleString()}
+              </strong>
+              <span>impressions</span>
+            </div>
+            <div>
+              <strong>
+                {metrics.reduce((sum, item) => sum + item.engagements, 0).toLocaleString()}
+              </strong>
+              <span>engagements</span>
+            </div>
+            <div>
+              <strong>{metrics.reduce((sum, item) => sum + item.likes, 0).toLocaleString()}</strong>
+              <span>likes</span>
+            </div>
+            <div>
+              <strong>{metrics.length}</strong>
+              <span>snapshots</span>
+            </div>
+          </div>
+        ) : (
+          <Empty
+            icon={BrainCircuit}
+            title="Analytics will appear here"
+            body="Connect an approved provider and run the analytics worker to populate live metrics."
+          />
+        )}
+      </section>
       <section className="live-panel">
         <div className="live-panel-head">
           <div>
@@ -847,6 +943,18 @@ export function LiveWorkspace() {
           />
         )}
       </section>
+      {streamPreview && (
+        <section className="live-panel stream-preview-panel">
+          <div className="live-panel-head">
+            <div>
+              <p className="live-kicker">Live model stream</p>
+              <h2>Campaign direction</h2>
+            </div>
+            <span className="live-helper">SSE connected</span>
+          </div>
+          <p className="stream-preview-copy">{streamPreview}</p>
+        </section>
+      )}
       <section className="live-panel overview-quick-start">
         <div className="live-panel-head">
           <div>
@@ -1273,6 +1381,26 @@ export function LiveWorkspace() {
               </small>
             </span>
             <Status value={account.status} />
+            {account.platform === "linkedin" || account.platform === "youtube" ? (
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={`Refresh ${account.display_name}`}
+                onClick={() => void refreshAccount(account)}
+                disabled={busy === `refresh-${account.id}` || account.status === "revoked"}
+              >
+                <RefreshCw size={14} />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={`Disconnect ${account.display_name}`}
+              onClick={() => void revokeAccount(account)}
+              disabled={busy === `revoke-${account.id}` || account.status === "revoked"}
+            >
+              <X size={14} />
+            </button>
           </div>
         ))}
       </section>
@@ -1416,6 +1544,16 @@ export function LiveWorkspace() {
       platformQuality[v.platform] = [v.quality_score];
     }
   }
+  const metricTotals = metrics.reduce(
+    (totals, item) => ({
+      impressions: totals.impressions + item.impressions,
+      engagements: totals.engagements + item.engagements,
+      likes: totals.likes + item.likes,
+      comments: totals.comments + item.comments,
+      shares: totals.shares + item.shares,
+    }),
+    { impressions: 0, engagements: 0, likes: 0, comments: 0, shares: 0 },
+  );
   const analyticsView = (
     <div>
       <Reveal3D>
@@ -1424,6 +1562,37 @@ export function LiveWorkspace() {
           Analytics
         </h2>
       </Reveal3D>
+      <section className="live-panel analytics-provider-summary">
+        <div className="live-panel-head">
+          <div>
+            <p className="live-kicker">Provider snapshots</p>
+            <h2>{metrics.length ? "Live performance" : "Waiting for provider data"}</h2>
+          </div>
+          <Status value={metrics.length ? "synced" : "manual"} />
+        </div>
+        <div className="overview-metric-grid">
+          <div>
+            <strong>{metricTotals.impressions.toLocaleString()}</strong>
+            <span>impressions</span>
+          </div>
+          <div>
+            <strong>{metricTotals.engagements.toLocaleString()}</strong>
+            <span>engagements</span>
+          </div>
+          <div>
+            <strong>{metricTotals.likes.toLocaleString()}</strong>
+            <span>likes</span>
+          </div>
+          <div>
+            <strong>{metricTotals.comments.toLocaleString()}</strong>
+            <span>comments</span>
+          </div>
+          <div>
+            <strong>{metricTotals.shares.toLocaleString()}</strong>
+            <span>shares</span>
+          </div>
+        </div>
+      </section>
       <div className="analytics-grid">
         <ChartFrame title="Campaign status mix" caption={`${campaigns.length} total`}>
           <DonutChart
@@ -1793,6 +1962,7 @@ export function LiveWorkspace() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={view}
+                  className={view === "overview" ? "overview-layout" : "view-layout"}
                   variants={variantSwap}
                   initial="hidden"
                   animate="show"

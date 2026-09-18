@@ -25,6 +25,8 @@ class SocialAccountResponse(BaseModel):
     display_name: str
     status: Literal["connected", "paused", "revoked"]
     capabilities: list[str]
+    granted_scopes: list[str]
+    access_token_expires_at: datetime | None
     last_verified_at: datetime | None
     created_at: datetime
     updated_at: datetime

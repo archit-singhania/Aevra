@@ -8,7 +8,7 @@ from typing import Any
 
 def create_celery() -> Any:
     try:
-        from celery import Celery
+        from celery import Celery  # type: ignore[import-not-found]
     except ImportError as error:
         raise RuntimeError("Install the worker extra to run Celery") from error
     app = Celery(
@@ -28,6 +28,14 @@ def create_celery() -> Any:
             "collect-post-metrics": {
                 "task": "services.workers.tasks.collect_post_metrics",
                 "schedule": 900.0,
+            },
+            "execute-account-deletions": {
+                "task": "services.workers.tasks.execute_account_deletions",
+                "schedule": 3600.0,
+            },
+            "prune-oauth-states": {
+                "task": "services.workers.tasks.prune_oauth_states",
+                "schedule": 3600.0,
             },
         },
     )

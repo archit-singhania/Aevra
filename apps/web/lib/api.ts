@@ -112,6 +112,8 @@ export type SocialAccount = {
   display_name: string;
   status: "connected" | "paused" | "revoked";
   capabilities: string[];
+  granted_scopes?: string[];
+  access_token_expires_at?: string | null;
   last_verified_at: string | null;
 };
 
@@ -131,6 +133,20 @@ export type PublishJob = {
   external_url: string | null;
   error_message: string | null;
   published_at: string | null;
+};
+
+export type PostMetric = {
+  id: string;
+  social_account_id: string;
+  external_post_id: string;
+  collected_at: string;
+  impressions: number;
+  engagements: number;
+  clicks: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  metric_metadata: Record<string, unknown>;
 };
 
 export type CampaignGeneration = {
@@ -257,6 +273,58 @@ export const api = {
         body: JSON.stringify({ feedback: feedback || null }),
       },
     ),
+  streamModel: async (
+    token: string,
+    workspaceId: string,
+    payload: Record<string, unknown>,
+    onToken?: (token: string) => void,
+  ): Promise<string> => {
+    const headers = new Headers({ "Content-Type": "application/json" });
+    if (token !== "cookie") headers.set("Authorization", `Bearer ${token}`);
+    const response = await fetch(
+      apiUrl(`/workspaces/${workspaceId}/models/local/generate/stream`),
+      {
+        method: "POST",
+        headers,
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify(payload),
+      },
+    );
+    if (!response.ok || !response.body) {
+      throw new ApiError("Live model streaming is unavailable.", response.status);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let content = "";
+    const consume = (line: string) => {
+      if (!line.startsWith("data: ")) return;
+      const value = line.slice(6).trim();
+      if (value === "[DONE]") return;
+      try {
+        const event = JSON.parse(value) as { token?: string; message?: string };
+        if (event.message) throw new Error(event.message);
+        if (event.token) {
+          content += event.token;
+          onToken?.(content);
+        }
+      } catch (error) {
+        if (error instanceof SyntaxError) return;
+        throw error;
+      }
+    };
+    while (true) {
+      const chunk = await reader.read();
+      buffer += decoder.decode(chunk.value ?? new Uint8Array(), { stream: !chunk.done });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) consume(line.trim());
+      if (chunk.done) break;
+    }
+    if (buffer.trim()) consume(buffer.trim());
+    return content;
+  },
   decideCampaign: (
     token: string,
     workspaceId: string,
@@ -297,6 +365,28 @@ export const api = {
       `/workspaces/${workspaceId}/publishing/oauth/${provider}/authorize`,
       token,
     ),
+  oauthRefresh: (
+    token: string,
+    workspaceId: string,
+    provider: Extract<Platform, "linkedin" | "youtube">,
+    accountId: string,
+  ) =>
+    request<{ account_id: string; status: string; access_token_expires_at: string | null }>(
+      `/workspaces/${workspaceId}/publishing/oauth/${provider}/accounts/${accountId}/refresh`,
+      token,
+      { method: "POST" },
+    ),
+  oauthRevoke: (
+    token: string,
+    workspaceId: string,
+    provider: Extract<Platform, "facebook" | "instagram" | "threads" | "linkedin" | "youtube">,
+    accountId: string,
+  ) =>
+    request<{ account_id: string; status: string }>(
+      `/workspaces/${workspaceId}/publishing/oauth/${provider}/accounts/${accountId}/revoke`,
+      token,
+      { method: "POST" },
+    ),
   publish: (token: string, workspaceId: string, payload: Record<string, unknown>) =>
     request<PublishJob>(`/workspaces/${workspaceId}/publishing/jobs`, token, {
       method: "POST",
@@ -309,4 +399,6 @@ export const api = {
     }),
   scheduled: (token: string, workspaceId: string) =>
     request<ScheduledPost[]>(`/workspaces/${workspaceId}/operations/schedule`, token),
+  metrics: (token: string, workspaceId: string) =>
+    request<PostMetric[]>(`/workspaces/${workspaceId}/operations/metrics`, token),
 };

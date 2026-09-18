@@ -55,6 +55,28 @@ class AccountDeletionRequest(TimestampMixin, Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class OAuthState(TimestampMixin, Base):
+    """Short-lived, one-use OAuth state records used to prevent callback replay."""
+
+    __tablename__ = "oauth_states"
+    __table_args__ = (
+        UniqueConstraint("nonce_hash", name="uq_oauth_states_nonce_hash"),
+        Index("ix_oauth_states_expires", "expires_at", "consumed_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    nonce_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
+    )
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Organization(TimestampMixin, Base):
     __tablename__ = "organizations"
 
@@ -495,6 +517,11 @@ class SocialAccount(TimestampMixin, Base):
     # Encrypted provider tokens are intentionally opaque to all API responses.
     # 2 KiB accommodates refresh-token envelopes without truncation.
     access_token_ref: Mapped[str] = mapped_column(String(2048))
+    refresh_token_ref: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    access_token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    granted_scopes: Mapped[list[str]] = mapped_column(JSON, default=list)
     capabilities: Mapped[list[str]] = mapped_column(JSON, default=list)
     account_metadata: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     last_verified_at: Mapped[datetime | None] = mapped_column(

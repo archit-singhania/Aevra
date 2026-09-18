@@ -24,7 +24,10 @@ class MetricSnapshot:
 
 
 def normalize_metrics(
-    platform: str, external_post_id: str, payload: dict[str, object], collected_at: datetime
+    platform: str,
+    external_post_id: str,
+    payload: dict[str, object],
+    collected_at: datetime,
 ) -> MetricSnapshot:
     def non_negative(name: str) -> int:
         value = payload.get(name, 0)

@@ -1,22 +1,32 @@
-<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Aevra">
+  <!--
+    Transparent-ground version of the Nocturne mark, for placing on a page
+    rather than in an app tile. Same geometry as public/favicon.svg and
+    AevraMark in apps/mobile/lib/widgets/aevra_logo.dart, scaled 2x:
+    r = 24.8, circumference 155.82, 40° notch = 17.31.
+
+    `currentColor` on the ring means the arc inherits whatever text colour
+    it sits in and so works on both themes; only the tick and the monogram
+    are locked to copper.
+  -->
   <defs>
-    <!-- gradientUnits="userSpaceOnUse" is deliberate. The crossbar below is a
-         horizontal line, so its object bounding box has zero height; with the
-         default objectBoundingBox units the gradient degenerates and the
-         crossbar paints nothing, turning the "A" into a bare lambda. -->
-    <linearGradient id="brass" gradientUnits="userSpaceOnUse" x1="40" y1="40" x2="216" y2="216">
-      <stop offset="0%" stop-color="#e8d3a6"/>
-      <stop offset="52%" stop-color="#c9a45c"/>
-      <stop offset="100%" stop-color="#8f6d33"/>
+    <linearGradient id="aevra-copper" x1="10%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#e0a87d"/>
+      <stop offset="55%" stop-color="#c4855a"/>
+      <stop offset="100%" stop-color="#9a5a2e"/>
     </linearGradient>
   </defs>
-  <g transform="translate(128,128) rotate(-32) translate(-128,-128)">
-    <rect x="45" y="45" width="166" height="166" rx="42"
-          fill="none" stroke="url(#brass)" stroke-width="9.5" stroke-linecap="round"/>
-  </g>
-  <g stroke="url(#brass)" stroke-linecap="round" fill="none">
-    <line x1="128" y1="71.5" x2="83.5" y2="187.5" stroke-width="8"/>
-    <line x1="128" y1="71.5" x2="172.5" y2="187.5" stroke-width="8"/>
-    <line x1="104" y1="149" x2="152" y2="149" stroke-width="6.5"/>
-  </g>
+
+  <circle cx="32" cy="32" r="24.8" fill="none"
+          stroke="currentColor" stroke-opacity="0.3" stroke-width="4.4"
+          stroke-linecap="round" stroke-dasharray="138.51 17.31"/>
+
+  <circle cx="32" cy="32" r="24.8" fill="none"
+          stroke="url(#aevra-copper)" stroke-width="4.4"
+          stroke-linecap="round" stroke-dasharray="17.31 138.51" stroke-dashoffset="-138.51"/>
+
+  <path d="M21.2 44.4 32 19.6 42.8 44.4" fill="none" stroke="url(#aevra-copper)"
+        stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M26.8 37.2h10.4" fill="none" stroke="url(#aevra-copper)" stroke-opacity="0.75"
+        stroke-width="3.6" stroke-linecap="round"/>
 </svg>

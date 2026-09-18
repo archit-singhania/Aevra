@@ -1,7 +1,15 @@
 #version 460 core
 
+// Required for FlutterFragCoord(). Without this include the engine's GLSL ->
+// SPIR-V pass has no declaration for it and fails at compile time rather than
+// at runtime, which is why a missing line here kills the whole Gradle build.
+#include <flutter/runtime_effect.glsl>
+
 precision highp float;
 
+// Declaration order defines the setFloat indices used in
+// shader_background.dart: uSize.x = 0, uSize.y = 1, uTime = 2.
+// Do not reorder these without updating the painter.
 uniform vec2 uSize;
 uniform float uTime;
 
@@ -46,22 +54,32 @@ void main() {
   float n2 = snoise(aspectUv * 2.0 + vec2(5.0, -3.0) + t * 1.15);
   float field = n1 * 0.65 + n2 * 0.35;
 
-  vec3 bg = vec3(0.027, 0.035, 0.051);
-  vec3 brass = vec3(0.788, 0.643, 0.361);
-  vec3 inkEmerald = vec3(0.247, 0.365, 0.322);
-  vec3 platinum = vec3(0.722, 0.745, 0.780);
+  // Nocturne palette. Obsidian ground with a warm copper bloom high-right,
+  // a cool jade one low-left, and a wide frost wash through the middle that
+  // ties the two together instead of leaving them as two unrelated blobs.
+  vec3 bg = vec3(0.024, 0.027, 0.039);
+  vec3 copper = vec3(0.769, 0.522, 0.353);
+  vec3 jade = vec3(0.306, 0.612, 0.510);
+  vec3 frost = vec3(0.561, 0.655, 0.761);
 
-  float brassMask = smoothstep(0.18, 0.62, field) * smoothstep(0.05, 0.55, 1.0 - length(aspectUv - vec2(0.72, 0.28)));
-  float emeraldMask = smoothstep(0.15, 0.6, -field + 0.15) * smoothstep(0.05, 0.65, 1.0 - length(aspectUv - vec2(0.22, 0.78)));
-  float platinumMask = smoothstep(0.2, 0.58, field * 0.6 + 0.2) * smoothstep(0.05, 0.6, 1.0 - length(aspectUv - vec2(0.5, 0.5)));
+  float copperMask = smoothstep(0.16, 0.60, field) * smoothstep(0.05, 0.56, 1.0 - length(aspectUv - vec2(0.76, 0.24)));
+  float jadeMask = smoothstep(0.14, 0.58, -field + 0.15) * smoothstep(0.05, 0.66, 1.0 - length(aspectUv - vec2(0.20, 0.80)));
+  float frostMask = smoothstep(0.20, 0.58, field * 0.6 + 0.2) * smoothstep(0.05, 0.62, 1.0 - length(aspectUv - vec2(0.5, 0.52)));
 
   vec3 color = bg;
-  color += brass * brassMask * 0.10;
-  color += inkEmerald * emeraldMask * 0.09;
-  color += platinum * platinumMask * 0.05;
+  color += copper * copperMask * 0.115;
+  color += jade * jadeMask * 0.085;
+  color += frost * frostMask * 0.042;
 
-  float vignette = smoothstep(1.05, 0.25, length(aspectUv - 0.5));
-  color *= mix(0.75, 1.0, vignette);
+  // A deeper vignette than before. The content sits in glass panels with
+  // their own light; pulling the edges down is what makes those panels
+  // look lit rather than merely lighter than the wall behind them.
+  float vignette = smoothstep(1.08, 0.22, length(aspectUv - 0.5));
+  color *= mix(0.62, 1.0, vignette);
+
+  // Fine dither. Without it, gradients this dark band visibly on OLED.
+  float grain = fract(sin(dot(uv * uSize, vec2(12.9898, 78.233))) * 43758.5453);
+  color += (grain - 0.5) * 0.010;
 
   fragColor = vec4(color, 1.0);
 }

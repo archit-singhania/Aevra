@@ -27,18 +27,18 @@ class _GlassSpec {
 }
 
 const _specs = <GlassElevation, _GlassSpec>{
-  GlassElevation.flat: _GlassSpec(4, 0.34, []),
-  GlassElevation.raised: _GlassSpec(8, 0.48, [
-    BoxShadow(color: Color(0x66000000), blurRadius: 2, offset: Offset(0, 1)),
-    BoxShadow(color: Color(0x8C000000), blurRadius: 24, spreadRadius: -12, offset: Offset(0, 8)),
+  GlassElevation.flat: _GlassSpec(5, 0.30, []),
+  GlassElevation.raised: _GlassSpec(9, 0.46, [
+    BoxShadow(color: Color(0x6E000000), blurRadius: 3, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x8C000000), blurRadius: 28, spreadRadius: -14, offset: Offset(0, 10)),
   ]),
-  GlassElevation.floating: _GlassSpec(13, 0.62, [
-    BoxShadow(color: Color(0x73000000), blurRadius: 4, offset: Offset(0, 2)),
-    BoxShadow(color: Color(0xB3000000), blurRadius: 48, spreadRadius: -18, offset: Offset(0, 18)),
+  GlassElevation.floating: _GlassSpec(14, 0.60, [
+    BoxShadow(color: Color(0x78000000), blurRadius: 5, offset: Offset(0, 2)),
+    BoxShadow(color: Color(0xB8000000), blurRadius: 54, spreadRadius: -20, offset: Offset(0, 20)),
   ]),
-  GlassElevation.lifted: _GlassSpec(19, 0.76, [
-    BoxShadow(color: Color(0x80000000), blurRadius: 6, offset: Offset(0, 3)),
-    BoxShadow(color: Color(0xD1000000), blurRadius: 80, spreadRadius: -24, offset: Offset(0, 34)),
+  GlassElevation.lifted: _GlassSpec(20, 0.74, [
+    BoxShadow(color: Color(0x85000000), blurRadius: 7, offset: Offset(0, 3)),
+    BoxShadow(color: Color(0xD6000000), blurRadius: 92, spreadRadius: -26, offset: Offset(0, 38)),
   ]),
 };
 
@@ -54,8 +54,8 @@ class GlassSurface extends StatelessWidget {
     super.key,
     required this.child,
     this.elevation = GlassElevation.raised,
-    this.padding = const EdgeInsets.all(18),
-    this.radius = 12,
+    this.padding = const EdgeInsets.all(AevraSpace.md),
+    this.radius = AevraRadius.md,
     this.borderColor,
     this.adaptive = true,
   });
@@ -89,17 +89,20 @@ class GlassSurface extends StatelessWidget {
             child: Container(
               padding: padding,
               decoration: BoxDecoration(
-                color: AevraColors.panel.withOpacity(fill),
+                color: AevraColors.panel.withValues(alpha: fill),
                 borderRadius: BorderRadius.circular(radius),
                 border: Border.all(color: borderColor ?? AevraColors.line),
                 // The catching edge, matching web's `.glass::before` hairline.
+                // Tinted with the cool `sheen` token rather than the warm
+                // accent: a specular highlight is reflected light, and
+                // tinting it with the brand colour makes glass look painted.
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFFE8D3A6).withOpacity(0.045),
+                    AevraColors.sheen.withValues(alpha: 0.05),
                     Colors.transparent,
-                    const Color(0xFFE8D3A6).withOpacity(0.012),
+                    AevraColors.sheen.withValues(alpha: 0.014),
                   ],
                   stops: const [0.0, 0.38, 1.0],
                 ),
@@ -127,8 +130,8 @@ class DepthCard extends StatefulWidget {
     super.key,
     required this.child,
     this.elevation = GlassElevation.raised,
-    this.padding = const EdgeInsets.all(18),
-    this.radius = 12,
+    this.padding = const EdgeInsets.all(AevraSpace.md),
+    this.radius = AevraRadius.md,
     this.intensity = 1,
     this.onTap,
     this.enablePan = false,
@@ -227,11 +230,15 @@ class _DepthCardState extends State<DepthCard> with SingleTickerProviderStateMix
           final rotX = (-_local.dy * 7 * math.pi / 180) * amount;
           final rotY = (_local.dx * 9 * math.pi / 180) * amount;
 
+          final shrink = 1 - 0.012 * amount;
           final matrix = Matrix4.identity()
             ..setEntry(3, 2, 1 / 1100) // perspective, matching --depth-perspective
             ..rotateX(rotX)
             ..rotateY(rotY)
-            ..scale(1 - 0.012 * amount);
+            // `scale` is deprecated in favour of the explicit per-axis form.
+            // The w component stays 1: scaling it would divide the whole
+            // homogeneous coordinate and undo the perspective set above.
+            ..scaleByDouble(shrink, shrink, shrink, 1);
 
           return Transform(
             alignment: Alignment.center,
@@ -250,8 +257,8 @@ class _DepthCardState extends State<DepthCard> with SingleTickerProviderStateMix
                               center: Alignment(_local.dx * 1.8, _local.dy * 1.8),
                               radius: 0.85,
                               colors: [
-                                const Color(0xFFE8D3A6).withOpacity(0.13 * amount),
-                                const Color(0xFFE8D3A6).withOpacity(0.04 * amount),
+                                AevraColors.sheen.withValues(alpha: 0.14 * amount),
+                                AevraColors.sheen.withValues(alpha: 0.04 * amount),
                                 Colors.transparent,
                               ],
                               stops: const [0.0, 0.32, 0.62],

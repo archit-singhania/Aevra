@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
 import '../widgets/advanced_ui.dart';
@@ -26,10 +25,11 @@ class AnalyticsScreen extends StatelessWidget {
         return AdaptiveGlassScroll(
           child: RefreshIndicator(
           onRefresh: state.load,
-          color: AevraColors.lime,
+          color: AevraColors.accent,
           backgroundColor: AevraColors.panel,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            padding: const EdgeInsets.fromLTRB(
+                AevraSpace.gutter, AevraSpace.md, AevraSpace.gutter, AevraSpace.xxl),
             children: [
               ParallaxLayer(
                 depth: -1.4,
@@ -40,9 +40,14 @@ class AnalyticsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Analytics', style: GoogleFonts.fraunces(fontSize: 28, fontWeight: FontWeight.w500, letterSpacing: -0.02, color: AevraColors.text)),
-                          const SizedBox(height: 4),
-                          const Text('This workspace', style: TextStyle(fontSize: 12, color: AevraColors.muted2)),
+                          Text('SIGNAL', style: AevraType.eyebrow()),
+                          const SizedBox(height: AevraSpace.xs),
+                          Text('Analytics', style: AevraType.display(30)),
+                          const SizedBox(height: AevraSpace.xxs),
+                          const Text(
+                            'Measured across this workspace only.',
+                            style: TextStyle(fontSize: 12, color: AevraColors.muted),
+                          ),
                         ],
                       ),
                     ),
@@ -50,29 +55,33 @@ class AnalyticsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: AevraSpace.lg),
               if (firstLoad) ...[
-                Row(
-                  children: const [
+                const Row(
+                  children: [
                     Expanded(child: GlassCard(child: ShimmerStatCard())),
-                    SizedBox(width: 10),
+                    SizedBox(width: AevraSpace.sm),
                     Expanded(child: GlassCard(child: ShimmerStatCard())),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AevraSpace.sm),
                 const GlassCard(child: ShimmerList(count: 3)),
               ] else ...[
               Reveal(
                 index: 0,
                 child: Row(
                   children: [
-                    Expanded(child: _stat('Approval rate', '$approvalRate%', AevraColors.lime)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _stat('Connected accounts', '$connected', AevraColors.violet)),
+                    Expanded(
+                        child: _stat('Approval rate', '$approvalRate%', AevraColors.accent,
+                            '$approved of ${campaigns.length} cleared')),
+                    const SizedBox(width: AevraSpace.sm),
+                    Expanded(
+                        child: _stat('Connected', '$connected', AevraColors.jade,
+                            'publishing destinations')),
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AevraSpace.sm),
               Reveal(
                 index: 1,
                 child: DepthCard(
@@ -80,24 +89,19 @@ class AnalyticsScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: const [
-                        Icon(Icons.insights_outlined, size: 16, color: AevraColors.cyan),
-                        SizedBox(width: 8),
-                        Text('Campaign mix', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                    Text('CAMPAIGN MIX', style: AevraType.eyebrow(color: AevraColors.muted)),
+                    const SizedBox(height: AevraSpace.sm),
                     Text(
                       '${state.campaigns.length} campaigns · ${state.assets.length} media assets · '
                       '${state.documents.length} indexed sources',
-                      style: const TextStyle(fontSize: 10, color: AevraColors.muted2, height: 1.5),
+                      style: const TextStyle(
+                          fontSize: 12.5, color: AevraColors.textSoft, height: 1.55),
                     ),
                   ],
                 ),
               ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AevraSpace.sm),
               Reveal(
                 index: 2,
                 child: DepthCard(
@@ -112,19 +116,32 @@ class AnalyticsScreen extends StatelessWidget {
                 ),
               ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AevraSpace.sm),
               Reveal(
                 index: 3,
                 child: GlassSurface(
                 elevation: GlassElevation.flat,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AevraSpace.md, vertical: AevraSpace.sm),
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle_outline, size: 16, color: AevraColors.lime),
-                    const SizedBox(width: 8),
+                    // A live dot rather than a tick: this is a connection
+                    // state, and a tick reads as a completed action.
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: state.loading ? AevraColors.amber : AevraColors.jade,
+                      ),
+                    ),
+                    const SizedBox(width: AevraSpace.sm),
                     Expanded(
                       child: Text(
-                        state.loading ? 'Syncing workspace…' : 'Synced with the live workspace',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        state.loading ? 'SYNCING WORKSPACE' : 'SYNCED WITH LIVE WORKSPACE',
+                        style: AevraType.eyebrow(
+                          color: state.loading ? AevraColors.amber : AevraColors.jade,
+                        ),
                       ),
                     ),
                   ],
@@ -140,17 +157,17 @@ class AnalyticsScreen extends StatelessWidget {
     );
   }
 
-  Widget _stat(String label, String value, Color color) {
+  Widget _stat(String label, String value, Color color, String caption) {
     return DepthCard(
       elevation: GlassElevation.floating,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value,
-              style: TextStyle(
-                  fontSize: 30, fontWeight: FontWeight.w600, color: color, letterSpacing: -0.02)),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 10, color: AevraColors.muted2)),
+          Text(label.toUpperCase(), style: AevraType.eyebrow(color: AevraColors.muted)),
+          const SizedBox(height: AevraSpace.sm),
+          Text(value, style: AevraType.metric(34, color: color)),
+          const SizedBox(height: AevraSpace.xs),
+          Text(caption, style: AevraType.mono(size: 9.5)),
         ],
       ),
     );
@@ -168,42 +185,55 @@ class _AnimatedBars extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
-          children: [
-            Icon(Icons.bar_chart_rounded, size: 16, color: AevraColors.violet),
-            SizedBox(width: 8),
-            Text('Signal activity', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          ],
-        ),
-        const SizedBox(height: 14),
+        Text('SIGNAL ACTIVITY', style: AevraType.eyebrow(color: AevraColors.muted)),
+        const SizedBox(height: AevraSpace.md),
         SizedBox(
-          height: 72,
+          height: 84,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: values.map((value) {
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: value / maxValue),
-                duration: const Duration(milliseconds: 800),
-                curve: Curves.easeOutCubic,
-                builder: (context, progress, _) => Container(
-                  width: 26,
-                  height: 64 * progress + 4,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    gradient: const LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [AevraColors.violet, AevraColors.cyan],
+            children: List.generate(values.length, (i) {
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: TweenAnimationBuilder<double>(
+                    // Staggered so the four bars grow in sequence rather than
+                    // as one block, which reads as four separate measurements.
+                    tween: Tween(begin: 0, end: values[i] / maxValue),
+                    duration: Duration(milliseconds: 700 + i * 90),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, progress, _) => Container(
+                      height: 76 * progress + 3,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AevraRadius.xs),
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            AevraColors.frost.withValues(alpha: 0.28),
+                            AevraColors.frost,
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               );
-            }).toList(),
+            }),
           ),
         ),
-        const SizedBox(height: 8),
-        const Text('campaigns · approved · media · sources', style: TextStyle(fontSize: 9, color: AevraColors.muted2)),
+        const SizedBox(height: AevraSpace.sm),
+        Row(
+          children: [
+            for (final label in ['CAMPAIGNS', 'APPROVED', 'MEDIA', 'SOURCES'])
+              Expanded(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: AevraType.mono(size: 8),
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }

@@ -99,10 +99,15 @@ class _BootScreen extends StatelessWidget {
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                AevraMark(size: 44),
-                SizedBox(height: 20),
-                SizedBox(width: 120, child: ShimmerBox(height: 6, radius: 999)),
+              children: [
+                const AevraMark(size: 52),
+                const SizedBox(height: AevraSpace.lg),
+                Text('AEVRA', style: AevraType.eyebrow(color: AevraColors.muted)),
+                const SizedBox(height: AevraSpace.md),
+                const SizedBox(
+                  width: 104,
+                  child: ShimmerBox(height: 3, radius: AevraRadius.pill),
+                ),
               ],
             ),
           ),
@@ -327,11 +332,11 @@ class _MobileShellState extends State<MobileShell> {
       ),
       bottomNavigationBar: ClipRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 19, sigmaY: 19),
+          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: AevraColors.panel.withOpacity(0.76),
-              border: const Border(top: BorderSide(color: AevraColors.line)),
+              color: AevraColors.panel.withValues(alpha: 0.72),
+              border: const Border(top: BorderSide(color: AevraColors.lineStrong)),
             ),
             child: NavigationBar(
               selectedIndex: index,
@@ -378,17 +383,23 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+    // A rule under the bar rather than a filled surface: the shader
+    // background is the app's main visual asset, and a second opaque strip
+    // above the content would cut it off at the top of every screen.
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AevraColors.line)),
+      ),
+      padding: const EdgeInsets.fromLTRB(AevraSpace.lg, 10, AevraSpace.xs, 10),
       child: Row(
         children: [
-          const AevraMark(size: 26),
-          const SizedBox(width: 10),
+          const AevraMark(size: 25),
+          const SizedBox(width: AevraSpace.sm),
           Flexible(
             child: Text(
-              title,
+              title.toUpperCase(),
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.01),
+              style: AevraType.eyebrow(color: AevraColors.textSoft),
             ),
           ),
           const Spacer(),
@@ -397,11 +408,11 @@ class _TopBar extends StatelessWidget {
           AnimatedBuilder(
             animation: state,
             builder: (context, _) => AiOrb(
-              size: 26,
+              size: 24,
               state: state.loading ? AiOrbState.thinking : AiOrbState.idle,
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AevraSpace.xxs),
           IconButton(
             tooltip: 'Commands',
             onPressed: onOpenPalette,

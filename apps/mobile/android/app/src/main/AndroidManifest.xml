@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The app is a thin client over the FastAPI workspace, so it cannot do
+         anything at all without network access. Previously this was declared
+         only in the debug manifest (for hot reload), which meant release
+         builds installed fine and then failed every request. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="aevra_mobile"
         android:name="${applicationName}"

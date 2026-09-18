@@ -1,31 +1,79 @@
 @import "tailwindcss";
 
+/* =================================================================
+   AEVRA — "Nocturne" design tokens.
+
+   Direction: cool obsidian ground, porcelain type, one warm copper
+   signal, and jade / frost / amber / rose carrying state. Chroma is
+   deliberately low everywhere except the accent, which is what lets the
+   accent read as information rather than decoration.
+
+   These are mirrored one-for-one in apps/mobile/lib/theme/aevra_theme.dart.
+   ================================================================= */
 :root {
-  --bg: #0a0b0d;
-  --panel: #111318;
-  --line: rgba(196, 186, 168, 0.06);
-  --line-strong: rgba(196, 186, 168, 0.12);
-  --text: #efece4;
-  --muted: #8e8a80;
-  --muted-2: #5c584f;
-  --lime: #c9a45c;
-  --violet: #3f5d52;
-  --cyan: #b8bec7;
-  --focus: rgba(201, 164, 92, 0.55);
-  --accent: #c9a45c;
-  --accent-strong: #e0c68f;
-  --accent-ink: #171208;
-  --surface-0: #0a0b0d;
-  --surface-1: #111318;
-  --surface-2: #171b1e;
-  --surface-3: #20262a;
-  --text-strong: #efece4;
-  --text-soft: #a9a49a;
+  /* ---- ground ---------------------------------------------------- */
+  --bg: #06070a;
+  --surface-0: #06070a;
+  --surface-1: #0b0d12;
+  --panel: #11141b;
+  --surface-2: #11141b;
+  --surface-3: #181c25;
+  --surface-4: #212632;
+
+  --line: rgba(198, 208, 226, 0.07);
+  --line-strong: rgba(198, 208, 226, 0.15);
+
+  /* ---- type ------------------------------------------------------ */
+  /* Porcelain, not white. A trace of warmth stops dark UI reading clinical. */
+  --text: #f2f0ea;
+  --text-strong: #fbfaf6;
+  --text-soft: #b6bac4;
+  --muted: #878d9a;
+  --muted-2: #5a6070;
+
+  /* ---- signal ---------------------------------------------------- */
+  --accent: #c4855a;
+  --accent-strong: #e0a87d;
+  --accent-ink: #180c05;
+  --accent-rgb: 196, 133, 90;
+  --focus: rgba(196, 133, 90, 0.6);
+
+  --jade: #4e9c82;
+  --frost: #8fa7c2;
+  --amber: #d4a244;
+  --rose: #e0656e;
+
+  /* Pre-mixed accent washes. Every tinted surface in the app pulls from
+     these four rather than inlining its own rgba(), so retuning the
+     accent is one edit instead of sixty. */
+  --accent-wash-1: rgba(196, 133, 90, 0.055);
+  --accent-wash-2: rgba(196, 133, 90, 0.1);
+  --accent-wash-3: rgba(196, 133, 90, 0.17);
+  --accent-line: rgba(196, 133, 90, 0.26);
+
+  /* Legacy aliases. Roughly a hundred rules further down this file still
+     reference --lime / --violet / --cyan; remapping them here is one edit,
+     renaming every call site is a hundred. New rules use the names above. */
+  --lime: var(--accent);
+  --violet: var(--jade);
+  --cyan: var(--frost);
+
+  /* ---- type families ---------------------------------------------
+     Three families doing three jobs: Playfair Display for display only,
+     Manrope for all UI text, JetBrains Mono for anything tabular.
+     Loaded via <link> in app/layout.tsx. */
   --font-sans:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-geist:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  /* ---- geometry --------------------------------------------------- */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 13px;
+  --r-lg: 18px;
+  --r-xl: 24px;
 }
 
 /* Real bug fix, not a style tweak: `html, body { overflow: hidden }` further
@@ -126,8 +174,7 @@ button {
 .app-shell {
   min-height: 100vh;
   display: flex;
-  background:
-    radial-gradient(circle at 40% -10%, rgba(201, 164, 92, 0.045), transparent 32%), var(--bg);
+  background: radial-gradient(circle at 40% -10%, var(--accent-wash-1), transparent 32%), var(--bg);
   overflow: hidden;
   position: relative;
 }
@@ -170,14 +217,14 @@ button {
 .ambient-one {
   width: 320px;
   height: 320px;
-  background: #6dd891;
+  background: var(--jade);
   top: 55%;
   left: 33%;
 }
 .ambient-two {
   width: 260px;
   height: 260px;
-  background: #7058df;
+  background: var(--accent);
   bottom: -12%;
   right: 6%;
 }
@@ -1255,7 +1302,7 @@ button {
   display: flex;
   gap: 7px;
   flex-wrap: wrap;
-  color: #8f79e0;
+  color: var(--frost);
   font-size: 11px;
 }
 .variant-hashtags span {
@@ -1573,39 +1620,35 @@ button {
 }
 
 /* Advanced interaction layer for the API-connected workspace. */
-html[data-theme="light"] {
-  --bg: #edf2ec;
-  --panel: #f7faf6;
-  --text: #20180f;
-  --muted: #5a6a5f;
-  --muted-2: #728176;
-}
+/* Early light-mode pass. The authoritative token contract lives at the
+   bottom of this file; these rules only exist to catch component-level
+   properties that aren't expressed as tokens. */
 html[data-theme="light"] body {
   background: var(--bg);
   color: var(--text);
 }
 html[data-theme="light"] .live-app {
-  color: #20180f;
+  color: var(--text);
   background:
-    radial-gradient(circle at 40% -10%, rgba(115, 180, 66, 0.12), transparent 34%), #edf2ec;
+    radial-gradient(circle at 40% -10%, rgba(154, 90, 46, 0.1), transparent 34%), var(--bg);
 }
 html[data-theme="light"] .live-sidebar,
 html[data-theme="light"] .live-topbar {
-  background: rgba(247, 250, 246, 0.78);
-  border-color: rgba(20, 46, 28, 0.12);
+  background: rgba(251, 250, 247, 0.86);
+  border-color: var(--line);
 }
 html[data-theme="light"] .live-panel,
 html[data-theme="light"] .live-stats article {
-  background: rgba(247, 250, 246, var(--glass-alpha, 0.72));
-  border-color: rgba(20, 46, 28, 0.12);
+  background: rgba(255, 255, 255, var(--glass-alpha, 0.76));
+  border-color: var(--line);
 }
 html[data-theme="light"] .live-field input,
 html[data-theme="light"] .live-field textarea,
 html[data-theme="light"] .live-field select,
 html[data-theme="light"] .live-search input {
-  background: #fff;
-  color: #20180f;
-  border-color: rgba(20, 46, 28, 0.16);
+  background: var(--surface-2);
+  color: var(--text-strong);
+  border-color: var(--line-strong);
 }
 html[data-theme="light"] .webgl-background {
   opacity: 0.1;
@@ -1628,8 +1671,8 @@ html[data-theme="light"] .live-sidebar nav button {
 }
 html[data-theme="light"] .live-sidebar nav button:hover,
 html[data-theme="light"] .live-sidebar nav button.active {
-  color: #16351e;
-  background: rgba(115, 180, 66, 0.16);
+  color: var(--text-strong);
+  background: var(--accent-wash-3);
 }
 html[data-theme="light"] .live-hero h1,
 html[data-theme="light"] .live-panel h2,
@@ -1645,16 +1688,16 @@ html[data-theme="light"] .live-stats small {
   color: #4d6654;
 }
 html[data-theme="light"] .live-connected {
-  color: #24532d;
-  border-color: rgba(70, 130, 52, 0.38);
-  background: rgba(196, 186, 168, 0.62);
+  color: var(--accent-strong);
+  border-color: var(--accent-line);
+  background: rgba(255, 255, 255, 0.7);
 }
 html[data-theme="light"] .live-command-trigger,
 html[data-theme="light"] .sound-toggle,
 html[data-theme="light"] .live-theme-toggle {
-  color: #31513a;
-  border-color: rgba(33, 72, 42, 0.18);
-  background: rgba(196, 186, 168, 0.58);
+  color: var(--text-soft);
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .live-hero {
@@ -1961,9 +2004,10 @@ html[data-theme="light"] .live-theme-toggle {
 .live-app {
   min-height: 100vh;
   display: flex;
-  color: #eef2eb;
+  color: var(--text);
   background:
-    radial-gradient(circle at 40% -10%, rgba(201, 164, 92, 0.045), transparent 32%), #080b0d;
+    radial-gradient(circle at 40% -12%, var(--accent-wash-1), transparent 32%),
+    radial-gradient(circle at 88% 104%, rgba(78, 156, 130, 0.05), transparent 38%), var(--bg);
   font-family: var(--font-sans);
   position: relative;
   overflow: hidden;
@@ -2388,8 +2432,8 @@ html[data-theme="light"] .live-theme-toggle {
 .live-field textarea:focus,
 .live-field select:focus,
 .live-search input:focus {
-  border-color: #91c65b;
-  box-shadow: 0 0 0 3px rgba(201, 164, 92, 0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash-2);
 }
 .live-field textarea {
   min-height: 92px;
@@ -2602,9 +2646,10 @@ html[data-theme="light"] .live-theme-toggle {
   align-items: center;
   gap: 8vw;
   padding: 8vw;
-  color: #eff8eb;
+  color: var(--text);
   background:
-    radial-gradient(circle at 20% 20%, rgba(130, 190, 79, 0.16), transparent 34%), #080b0d;
+    radial-gradient(circle at 18% 16%, rgba(78, 156, 130, 0.14), transparent 36%),
+    radial-gradient(circle at 82% 22%, var(--accent-wash-3), transparent 34%), var(--bg);
 }
 .live-auth > * {
   position: relative;
@@ -3032,10 +3077,10 @@ body {
   animation: theme-wipe-in 0.72s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .theme-wipe.light {
-  background: linear-gradient(135deg, #fbfdf8 0%, #edf2ec 55%, #dce9d6 100%);
+  background: linear-gradient(135deg, #fbfaf7 0%, #f5f3ee 55%, #e7e2d8 100%);
 }
 .theme-wipe.dark {
-  background: linear-gradient(135deg, #090d0d 0%, #080b0d 55%, #111d14 100%);
+  background: linear-gradient(135deg, #0b0d12 0%, #06070a 55%, #171012 100%);
 }
 @keyframes theme-wipe-in {
   to {
@@ -3150,6 +3195,61 @@ body {
 }
 .live-app.view-overview .live-list-row {
   padding: 9px 5px;
+}
+
+/* Desktop overview is a control-room frame, not a long feed. Keep the
+   greeting, signal cards, recent work, and next actions in the first viewport;
+   only the recent-work list itself gets an internal rail when it has many
+   rows. Smaller screens keep the document flow so content remains reachable.
+ */
+@media (min-width: 1101px) {
+  .live-app.view-overview .live-content {
+    overflow: hidden;
+    padding-top: 18px;
+    padding-bottom: 20px;
+  }
+
+  .live-app.view-overview .overview-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    align-content: stretch;
+    gap: 12px;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .live-app.view-overview .overview-layout > .live-hero,
+  .live-app.view-overview .overview-layout > .live-stats {
+    grid-column: 1 / -1;
+    min-height: 0;
+    margin-bottom: 0;
+  }
+
+  .live-app.view-overview .overview-layout > .live-panel {
+    min-height: 0;
+  }
+
+  .live-app.view-overview .overview-layout > .live-panel:not(.overview-quick-start) {
+    overflow: auto;
+  }
+
+  .live-app.view-overview .overview-actions {
+    grid-template-columns: 1fr;
+    gap: 7px;
+    margin-top: 8px;
+  }
+
+  .live-app.view-overview .overview-action {
+    min-height: 0;
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .live-app.view-overview .overview-layout {
+    min-height: 0;
+  }
 }
 
 /* A single motion language for every interactive control in the web app. */
@@ -3472,7 +3572,7 @@ body {
 
 /* ---- Premium command-center pass: type pairing, density, restrained glow ---- */
 :root {
-  --font-serif: "Iowan Old Style", "Palatino Linotype", ui-serif, Georgia, serif;
+  --font-serif: "Playfair Display", "Iowan Old Style", ui-serif, Georgia, serif;
 }
 .live-hero h1,
 .live-auth > section h1,
@@ -3569,18 +3669,20 @@ body {
    can be retuned in one place.
    ================================================================= */
 :root {
-  --glass-tint: 17, 19, 24;
-  --glass-sheen: 232, 211, 166;
+  --glass-tint: 17, 20, 27;
+  /* Cool, not brass. A specular highlight is reflected light; tinting it
+     with the brand colour makes glass look painted rather than lit. */
+  --glass-sheen: 198, 208, 226;
 
-  --glass-blur-flat: 8px;
-  --glass-blur-raised: 16px;
-  --glass-blur-floating: 26px;
-  --glass-blur-lifted: 38px;
+  --glass-blur-flat: 10px;
+  --glass-blur-raised: 18px;
+  --glass-blur-floating: 28px;
+  --glass-blur-lifted: 40px;
 
-  --glass-fill-flat: 0.34;
-  --glass-fill-raised: 0.48;
-  --glass-fill-floating: 0.62;
-  --glass-fill-lifted: 0.76;
+  --glass-fill-flat: 0.3;
+  --glass-fill-raised: 0.46;
+  --glass-fill-floating: 0.6;
+  --glass-fill-lifted: 0.74;
 
   --depth-perspective: 1100px;
 }
@@ -3696,28 +3798,45 @@ body {
    after the legacy component rules so every surface follows the same
    light/dark switch, including charts and empty states.
    ------------------------------------------------------------------ */
+/* "Daylight" — the light counterpart. Warm paper rather than grey, so the
+   two themes feel like day and night in the same room instead of two
+   different products. */
 html[data-theme="light"] {
-  --bg: #f3f1ec;
-  --panel: #fbfaf7;
-  --line: rgba(41, 46, 48, 0.12);
-  --line-strong: rgba(41, 46, 48, 0.22);
-  --text: #1f2526;
-  --text-strong: #172021;
-  --text-soft: #566062;
-  --muted: #667174;
-  --muted-2: #7e898b;
-  --lime: #8d6b2c;
-  --violet: #2d5b4b;
-  --cyan: #486b78;
-  --accent: #8d6b2c;
-  --accent-strong: #6f5120;
-  --accent-ink: #fffaf0;
-  --surface-0: #f3f1ec;
+  --bg: #f5f3ee;
+  --surface-0: #f5f3ee;
   --surface-1: #fbfaf7;
+  --panel: #ffffff;
   --surface-2: #ffffff;
-  --surface-3: #e9e7df;
+  --surface-3: #edeae3;
+  --surface-4: #e4e0d7;
+
+  --line: rgba(26, 28, 33, 0.1);
+  --line-strong: rgba(26, 28, 33, 0.2);
+
+  --text: #14161b;
+  --text-strong: #0c0e12;
+  --text-soft: #4a505c;
+  --muted: #6a7180;
+  --muted-2: #8a909c;
+
+  --accent: #9a5a2e;
+  --accent-strong: #7c4722;
+  --accent-ink: #fff8f1;
+  --accent-rgb: 154, 90, 46;
+  --focus: rgba(154, 90, 46, 0.55);
+
+  --jade: #2f7a61;
+  --frost: #3f6183;
+  --amber: #9a6f16;
+  --rose: #b3343e;
+
+  --accent-wash-1: rgba(154, 90, 46, 0.06);
+  --accent-wash-2: rgba(154, 90, 46, 0.11);
+  --accent-wash-3: rgba(154, 90, 46, 0.16);
+  --accent-line: rgba(154, 90, 46, 0.3);
+
   --glass-tint: 255, 255, 255;
-  --glass-sheen: 141, 107, 44;
+  --glass-sheen: 26, 28, 33;
 }
 
 html[data-theme="light"] body,
@@ -4205,4 +4324,494 @@ html:not([data-theme="light"]) .live-auth-card {
 .chart-card > * {
   position: relative;
   z-index: 1;
+}
+
+/* =================================================================
+   NOCTURNE COMPONENT LAYER
+
+   Everything above this line predates the rebrand and still carries
+   literal `rgba(201, 164, 92, ...)` brass values and hand-picked greys
+   inline. Rather than touch ~100 call sites (and risk missing some, which
+   is how a palette ends up half-migrated), this layer re-expresses those
+   surfaces in terms of the tokens at the top of the file.
+
+   Consequence worth knowing: a new rule added ABOVE this block that
+   hardcodes a colour will be silently overridden here. New component
+   styling belongs in this layer or below it.
+   ================================================================= */
+
+/* ---- 1. typography ------------------------------------------------
+   The serif appears at display sizes only, always with negative tracking.
+   At default tracking a high-contrast serif reads as a book, not as an
+   instrument panel. */
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "ss01";
+  letter-spacing: -0.005em;
+}
+
+.live-hero h1,
+.live-auth > section h1,
+.live-panel h2,
+.live-auth-card h2,
+.onboarding-card h2,
+.review-header h2,
+.page-heading h1 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--text-strong);
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+
+.live-hero h1 {
+  font-size: clamp(28px, 3.4vw, 46px);
+  line-height: 1.04;
+}
+.live-auth > section h1 {
+  font-size: clamp(34px, 4.6vw, 62px);
+  line-height: 1.02;
+}
+.live-panel h2 {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+/* The kicker is the one place the mono face carries brand rather than
+   data — wide tracking, uppercase, accent-coloured. */
+.live-kicker,
+.approval-kicker,
+.eyebrow,
+.nav-kicker {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.nav-kicker,
+.eyebrow {
+  color: var(--muted-2) !important;
+}
+
+.live-logo {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  color: var(--text-strong);
+}
+.live-logo b {
+  font-weight: 600;
+}
+.live-logo span {
+  border-color: var(--accent);
+}
+
+/* Metrics are data, so they get the mono face and tabular figures. Without
+   tabular figures a counter ticking 9 → 10 reflows the card it sits in. */
+.live-stats strong,
+.score-ring strong,
+.chart-legend b {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  color: var(--text-strong);
+}
+.live-stats strong {
+  font-size: 30px;
+}
+.live-stats small {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.live-stats span {
+  color: var(--muted-2);
+}
+.live-stats svg {
+  color: var(--accent);
+}
+
+.live-hero p:not(.live-kicker),
+.live-auth > section > p:not(.live-kicker) {
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.live-list-row b {
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.live-list-row small,
+.live-asset small,
+.live-helper,
+.live-brand small,
+.live-workspace small,
+.live-user small,
+.live-evidence span,
+.live-variant small {
+  color: var(--muted);
+}
+.live-variant p,
+.live-evidence p {
+  color: var(--text-soft);
+}
+
+/* ---- 2. geometry --------------------------------------------------
+   Small objects get tighter corners than large ones. One uniform radius
+   across every surface is what makes an interface read as a template. */
+.live-panel,
+.live-stats article,
+.chart-card,
+.panel {
+  border-radius: var(--r-md);
+}
+.live-auth-card,
+.command-dialog,
+.onboarding-card,
+.review-dialog {
+  border-radius: var(--r-xl);
+}
+.live-sidebar nav button,
+.live-field input,
+.live-field textarea,
+.live-field select,
+.live-search input,
+.live-asset,
+.live-brand,
+.overview-action,
+.oauth-connect-button,
+.nav-item {
+  border-radius: var(--r-sm);
+}
+.live-list-row {
+  border-radius: var(--r-xs);
+}
+
+/* ---- 3. chrome ----------------------------------------------------- */
+.live-sidebar {
+  width: 264px;
+  flex-basis: 264px;
+  padding: 24px 14px 16px;
+}
+.live-sidebar nav {
+  gap: 2px;
+}
+.live-sidebar nav button {
+  padding: 9px 11px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.live-sidebar nav button:hover {
+  color: var(--text);
+  background: rgba(var(--glass-sheen), 0.045);
+}
+/* The active rail is a 2px inset bar, not a filled pill. A filled nav item
+   competes with the panels for attention; a bar states position quietly. */
+.live-sidebar nav button.active {
+  color: var(--text-strong);
+  background: var(--accent-wash-1);
+  box-shadow: inset 2px 0 var(--accent);
+}
+.live-sidebar nav button.active svg {
+  color: var(--accent);
+}
+
+.live-workspace > div,
+.live-user > div,
+.live-brand > div,
+.workspace-avatar,
+.oauth-connect-mark {
+  color: var(--accent-ink);
+  background: linear-gradient(145deg, var(--accent-strong), var(--accent));
+  border-radius: var(--r-sm);
+  font-family: var(--font-sans);
+  font-weight: 700;
+}
+
+.live-topbar {
+  min-height: 64px;
+  padding: 0 clamp(18px, 3vw, 38px);
+  border-color: var(--line);
+}
+.live-topbar i,
+.live-connected i,
+.pulse-dot,
+.notification i,
+.live-label i {
+  background: var(--accent);
+}
+.live-connected {
+  color: var(--text-soft);
+  border-color: var(--line-strong);
+  background: rgba(var(--glass-sheen), 0.03);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.live-command-trigger,
+.sound-toggle,
+.live-theme-toggle,
+.voice-indicator,
+.live-refresh {
+  color: var(--muted);
+  border-color: var(--line);
+  background: rgba(var(--glass-sheen), 0.03);
+}
+.live-command-trigger:hover,
+.sound-toggle:hover,
+.live-theme-toggle:hover,
+.voice-indicator.is-active,
+.voice-input-button.is-active {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+.live-content {
+  max-width: 1440px;
+  padding: 26px clamp(20px, 3.4vw, 56px) 34px;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* ---- 4. surfaces and rows ------------------------------------------ */
+.live-list-row:hover,
+.live-list-row.selected,
+.overview-action:hover,
+.command-dialog > button:hover,
+.variant-list > button.selected {
+  background: var(--accent-wash-1);
+}
+.live-list-row.selected {
+  box-shadow: inset 2px 0 var(--accent);
+}
+
+.live-field input,
+.live-field textarea,
+.live-field select,
+.live-search input {
+  background: var(--surface-1);
+  border-color: var(--line);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+}
+.live-field {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.live-asset {
+  background: var(--surface-1);
+  border-color: var(--line);
+}
+.live-asset > svg,
+.live-asset a,
+.live-asset button,
+.live-auth-points svg,
+.live-empty svg,
+.overview-action svg:first-child,
+.composer-header svg,
+.heading-icon.lime {
+  color: var(--accent);
+}
+.live-tabs button.active {
+  color: var(--text-strong);
+  border-color: var(--accent);
+}
+.live-variant > div {
+  color: var(--accent);
+  letter-spacing: 0.12em;
+}
+
+/* ---- 5. status vocabulary ------------------------------------------
+   One meaning per colour across the whole product: jade = done, amber =
+   a human still owes it a decision, rose = it failed, grey = nothing has
+   happened yet. The accent is deliberately absent — it marks the primary
+   action, and a status is not an action. */
+.live-status {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: rgba(var(--glass-sheen), 0.06);
+  border: 1px solid transparent;
+}
+.status-approved,
+.status-ready,
+.status-connected,
+.status-published {
+  color: var(--jade);
+  background: rgba(78, 156, 130, 0.1);
+  border-color: rgba(78, 156, 130, 0.24);
+}
+.status-awaiting-approval {
+  color: var(--amber);
+  background: rgba(212, 162, 68, 0.1);
+  border-color: rgba(212, 162, 68, 0.24);
+}
+.status-failed,
+.status-rejected {
+  color: var(--rose);
+  background: rgba(224, 101, 110, 0.1);
+  border-color: rgba(224, 101, 110, 0.24);
+}
+.live-alert {
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+}
+.live-alert.success {
+  color: var(--jade);
+  background: rgba(78, 156, 130, 0.09);
+  border-color: rgba(78, 156, 130, 0.22);
+}
+.live-alert.error {
+  color: var(--rose);
+  background: rgba(224, 101, 110, 0.09);
+  border-color: rgba(224, 101, 110, 0.22);
+}
+
+/* ---- 6. the one allowed glow ---------------------------------------
+   Everything else in the app is flat and hairlined specifically so this
+   reads as the single live object on screen. */
+.ai-orb {
+  background: radial-gradient(
+    circle,
+    rgba(var(--accent-rgb), 0.95) 0 10%,
+    rgba(var(--accent-rgb), 0.24) 32%,
+    transparent 70%
+  );
+  box-shadow: 0 0 30px rgba(var(--accent-rgb), 0.26);
+}
+.ai-orb span {
+  border-color: rgba(var(--accent-rgb), 0.42);
+}
+.ai-orb-success {
+  box-shadow: 0 0 34px rgba(78, 156, 130, 0.42);
+  filter: none;
+}
+
+/* Hover sheens are cool-tinted; a warm sheen reads as a coloured overlay
+   rather than as light falling across glass. */
+.live-glow::after,
+.live-auth-card::after,
+.depth-card::after,
+.composer-card::after {
+  background: radial-gradient(
+    340px circle at var(--mx, var(--depth-glow-x, 50%)) var(--my, var(--depth-glow-y, 20%)),
+    rgba(var(--glass-sheen), 0.1),
+    transparent 68%
+  );
+}
+
+/* ---- 7. actions ----------------------------------------------------- */
+.onboarding-actions .onboarding-next {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  font-weight: 700;
+}
+.spinner {
+  border-color: rgba(var(--accent-rgb), 0.3);
+  border-top-color: var(--accent-ink);
+}
+.live-app button:focus-visible,
+.live-auth button:focus-visible,
+.live-app input:focus-visible,
+.live-auth input:focus-visible,
+.live-app textarea:focus-visible,
+.live-app select:focus-visible,
+.live-app a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: var(--r-xs);
+}
+
+/* ---- 8. hero artwork ------------------------------------------------ */
+.live-auth > .hero-visual,
+.live-auth > .hero-video-stage,
+.hero-visual {
+  background:
+    radial-gradient(circle at 14% 22%, rgba(78, 156, 130, 0.34), transparent 38%),
+    radial-gradient(circle at 80% 14%, rgba(var(--accent-rgb), 0.26), transparent 34%),
+    radial-gradient(circle at 64% 90%, rgba(143, 167, 194, 0.1), transparent 36%), var(--bg);
+}
+.hero-visual-orb-one {
+  background: radial-gradient(circle at 55% 50%, rgba(78, 156, 130, 0.66), transparent 66%);
+}
+.hero-visual-orb-two {
+  background: radial-gradient(circle at 50% 50%, rgba(var(--accent-rgb), 0.6), transparent 64%);
+}
+.hero-visual-orb-three {
+  background: radial-gradient(circle at 50% 50%, rgba(143, 167, 194, 0.28), transparent 64%);
+}
+.hero-visual-grid {
+  background-image:
+    linear-gradient(rgba(var(--glass-sheen), 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--glass-sheen), 0.035) 1px, transparent 1px);
+}
+.live-auth > .hero-video-overlay {
+  background:
+    linear-gradient(
+      115deg,
+      rgba(6, 7, 10, 0.94) 0%,
+      rgba(6, 7, 10, 0.74) 36%,
+      rgba(6, 7, 10, 0.3) 64%,
+      rgba(6, 7, 10, 0.82) 100%
+    ),
+    radial-gradient(circle at 78% 18%, rgba(var(--accent-rgb), 0.16), transparent 55%);
+}
+
+/* ---- 9. layout density ----------------------------------------------
+   The dashboard is a control room: it should fill one viewport and use
+   width rather than stack into a long column on wide screens. */
+.live-stats {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.live-stats article {
+  padding: 15px 16px;
+  gap: 6px;
+}
+.live-panel {
+  padding: 18px 20px;
+}
+.live-columns {
+  gap: 14px;
+}
+.live-hero {
+  margin-bottom: 22px;
+}
+
+@media (min-width: 1440px) {
+  .live-columns {
+    grid-template-columns: minmax(300px, 0.72fr) minmax(0, 1.28fr);
+  }
+}
+
+/* ---- 10. light-mode corrections -------------------------------------
+   The rules above assume a dark ground for their sheens and washes. These
+   three are the ones that would otherwise be illegible on paper. */
+html[data-theme="light"] .live-sidebar nav button:hover,
+html[data-theme="light"] .command-dialog > button:hover {
+  background: rgba(26, 28, 33, 0.05);
+}
+html[data-theme="light"] .live-status {
+  color: var(--muted);
+  background: rgba(26, 28, 33, 0.06);
+}
+html[data-theme="light"] .live-connected,
+html[data-theme="light"] .live-command-trigger,
+html[data-theme="light"] .sound-toggle,
+html[data-theme="light"] .live-theme-toggle {
+  background: rgba(255, 255, 255, 0.72);
 }

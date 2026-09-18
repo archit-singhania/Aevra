@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../api/models.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
@@ -13,21 +12,14 @@ class CampaignsScreen extends StatelessWidget {
 
   final AppState state;
 
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'approved':
-      case 'ready':
-      case 'published':
-        return AevraColors.lime;
-      case 'awaiting_approval':
-        return const Color(0xFFE1C66E);
-      case 'failed':
-      case 'rejected':
-        return const Color(0xFFFFAAA0);
-      default:
-        return AevraColors.muted;
-    }
-  }
+  /// One status vocabulary for the whole app: jade = done, amber = you owe
+  /// it a decision, rose = it went wrong, grey = nothing has happened yet.
+  Color _statusColor(String status) => switch (status) {
+        'approved' || 'ready' || 'published' => AevraColors.jade,
+        'awaiting_approval' => AevraColors.amber,
+        'failed' || 'rejected' => AevraColors.rose,
+        _ => AevraColors.muted2,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +29,11 @@ class CampaignsScreen extends StatelessWidget {
         return AdaptiveGlassScroll(
           child: RefreshIndicator(
           onRefresh: state.load,
-          color: AevraColors.lime,
+          color: AevraColors.accent,
           backgroundColor: AevraColors.panel,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            padding: const EdgeInsets.fromLTRB(
+                AevraSpace.gutter, AevraSpace.md, AevraSpace.gutter, AevraSpace.xxl),
             children: [
               ParallaxLayer(
                 depth: -1.4,
@@ -51,9 +44,14 @@ class CampaignsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Campaigns', style: GoogleFonts.fraunces(fontSize: 28, fontWeight: FontWeight.w500, letterSpacing: -0.02, color: AevraColors.text)),
-                          const SizedBox(height: 4),
-                          Text('${state.campaigns.length} in this workspace', style: const TextStyle(fontSize: 12, color: AevraColors.muted2)),
+                          Text('PIPELINE', style: AevraType.eyebrow()),
+                          const SizedBox(height: AevraSpace.xs),
+                          Text('Campaigns', style: AevraType.display(30)),
+                          const SizedBox(height: AevraSpace.xxs),
+                          Text(
+                            '${state.campaigns.length} in this workspace · swipe a card to decide',
+                            style: const TextStyle(fontSize: 12, height: 1.45, color: AevraColors.muted),
+                          ),
                         ],
                       ),
                     ),
@@ -62,14 +60,30 @@ class CampaignsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: AevraSpace.lg),
               if (state.loading && state.campaigns.isEmpty)
                 // #4 — skeleton shimmer in place of the bare spinner.
                 const GlassCard(child: ShimmerList(count: 4))
               else if (state.campaigns.isEmpty)
-                const Text(
-                  'No campaigns yet. Create one from the web app to see it here.',
-                  style: TextStyle(fontSize: 12, color: AevraColors.muted2),
+                const GlassCard(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: AevraSpace.md, vertical: AevraSpace.xl),
+                  child: Column(
+                    children: [
+                      Icon(Icons.auto_awesome_outlined, size: 26, color: AevraColors.accent),
+                      SizedBox(height: AevraSpace.sm),
+                      Text(
+                        'Nothing in the pipeline',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: AevraSpace.xxs),
+                      Text(
+                        'Create a campaign from the web app and it will appear here for approval.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11.5, height: 1.5, color: AevraColors.muted2),
+                      ),
+                    ],
+                  ),
                 )
               else
                 for (final (i, c) in state.campaigns.indexed) ...[
@@ -107,29 +121,52 @@ class CampaignsScreen extends StatelessWidget {
                           },
                           child: Row(
                             children: [
+                              // A status spine down the left edge. It carries
+                              // the same information as the chip but stays
+                              // readable while scrolling, when the chip text
+                              // is too small to parse.
+                              Container(
+                                width: 3,
+                                height: 34,
+                                margin: const EdgeInsets.only(right: AevraSpace.sm),
+                                decoration: BoxDecoration(
+                                  color: _statusColor(c.status),
+                                  borderRadius: BorderRadius.circular(AevraRadius.pill),
+                                ),
+                              ),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(c.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 3),
                                     Text(
-                                      c.platforms.join(' · '),
-                                      style: const TextStyle(fontSize: 10, color: AevraColors.muted2),
+                                      c.name,
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.15,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      c.platforms.join('  ·  ').toUpperCase(),
+                                      style: AevraType.mono(size: 9),
                                     ),
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: AevraSpace.xs),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                                 decoration: BoxDecoration(
-                                  color: _statusColor(c.status).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(color: _statusColor(c.status).withOpacity(0.3)),
+                                  color: _statusColor(c.status).withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(AevraRadius.pill),
+                                  border: Border.all(
+                                    color: _statusColor(c.status).withValues(alpha: 0.26),
+                                  ),
                                 ),
                                 child: Text(
                                   c.status.replaceAll('_', ' '),
-                                  style: TextStyle(fontSize: 9, color: _statusColor(c.status)),
+                                  style: AevraType.mono(size: 9, color: _statusColor(c.status)),
                                 ),
                               ),
                             ],
@@ -158,12 +195,26 @@ class CampaignsScreen extends StatelessWidget {
       alignment: alignLeft ? Alignment.centerLeft : Alignment.centerRight,
       padding: const EdgeInsets.symmetric(horizontal: 22),
       decoration: BoxDecoration(
-        color: (approve ? AevraColors.lime : const Color(0xFFFFAAA0)).withOpacity(0.14),
-        borderRadius: BorderRadius.circular(18),
+        color: (approve ? AevraColors.jade : AevraColors.rose).withValues(alpha: 0.14),
+        border: Border.all(
+          color: (approve ? AevraColors.jade : AevraColors.rose).withValues(alpha: 0.28),
+        ),
+        borderRadius: BorderRadius.circular(AevraRadius.md),
       ),
-      child: Icon(
-        approve ? Icons.check_circle_outline : Icons.close,
-        color: approve ? AevraColors.lime : const Color(0xFFFFAAA0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            approve ? Icons.check_rounded : Icons.close_rounded,
+            size: 18,
+            color: approve ? AevraColors.jade : AevraColors.rose,
+          ),
+          const SizedBox(width: AevraSpace.xs),
+          Text(
+            approve ? 'APPROVE' : 'REJECT',
+            style: AevraType.eyebrow(color: approve ? AevraColors.jade : AevraColors.rose),
+          ),
+        ],
       ),
     );
   }
@@ -204,27 +255,40 @@ class _CampaignDetailSheet extends StatelessWidget {
         constraints: const BoxConstraints(maxHeight: 560),
         child: GlassSurface(
           elevation: GlassElevation.lifted,
-          radius: 20,
-          padding: const EdgeInsets.all(18),
+          radius: AevraRadius.xl,
+          padding: const EdgeInsets.all(AevraSpace.lg),
           adaptive: false,
           borderColor: AevraColors.lineStrong,
           child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Grab handle. The sheet is draggable, and without an affordance
+            // people tap the scrim to dismiss instead, losing the gesture.
+            Center(
+              child: Container(
+                width: 34,
+                height: 3,
+                margin: const EdgeInsets.only(bottom: AevraSpace.md),
+                decoration: BoxDecoration(
+                  color: AevraColors.lineStrong,
+                  borderRadius: BorderRadius.circular(AevraRadius.pill),
+                ),
+              ),
+            ),
             Hero(
               tag: 'campaign-${campaign.id}',
               child: Material(
                 color: Colors.transparent,
-                child: Text(campaign.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                child: Text(campaign.name, style: AevraType.display(21)),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AevraSpace.xs),
             Text(
-              campaign.status.replaceAll('_', ' '),
-              style: const TextStyle(fontSize: 11, color: AevraColors.muted2),
+              campaign.status.replaceAll('_', ' ').toUpperCase(),
+              style: AevraType.eyebrow(color: AevraColors.muted),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AevraSpace.md),
             Flexible(
               child: variants.isEmpty
                   ? const Text('No generated variants yet.', style: TextStyle(fontSize: 12, color: AevraColors.muted2))
@@ -242,10 +306,10 @@ class _CampaignDetailSheet extends StatelessWidget {
                           // nested BackdropFilter would force a second
                           // saveLayer and re-blur the same pixels.
                           child: Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(AevraSpace.sm),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.03),
-                            borderRadius: BorderRadius.circular(10),
+                            color: AevraColors.surface1.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(AevraRadius.sm),
                             border: Border.all(color: AevraColors.line),
                           ),
                           child: Column(
@@ -254,12 +318,19 @@ class _CampaignDetailSheet extends StatelessWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(v.platform, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AevraColors.lime)),
-                                  Text('${v.qualityScore.round()}/100', style: const TextStyle(fontSize: 10, color: AevraColors.muted2)),
+                                  Text(v.platform.toUpperCase(), style: AevraType.eyebrow()),
+                                  Text(
+                                    '${v.qualityScore.round()}/100',
+                                    style: AevraType.mono(size: 9.5, color: AevraColors.frost),
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(v.caption, style: const TextStyle(fontSize: 12, color: AevraColors.text, height: 1.4)),
+                              const SizedBox(height: AevraSpace.xs),
+                              Text(
+                                v.caption,
+                                style: const TextStyle(
+                                    fontSize: 12.5, color: AevraColors.textSoft, height: 1.5),
+                              ),
                             ],
                           ),
                           ),
@@ -285,7 +356,6 @@ class _CampaignDetailSheet extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: AevraColors.lime, foregroundColor: AevraColors.onAccent),
                       onPressed: () {
                         AevraServices.celebrate(context);
                         state.decide(campaign.id, 'approve');

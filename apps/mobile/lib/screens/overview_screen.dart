@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
 import '../widgets/advanced_ui.dart';
@@ -32,13 +31,16 @@ class _StatSpec {
 
 class _OverviewScreenState extends State<OverviewScreen> {
   static final List<_StatSpec> _specs = [
-    _StatSpec('brain', 'Brand Brain', 'indexed sources', Icons.hub_outlined, AevraColors.lime,
+    _StatSpec('brain', 'Brand Brain', 'indexed sources', Icons.hub_outlined, AevraColors.frost,
         (s) => s.documents.length),
-    _StatSpec('campaigns', 'Campaigns', 'in workspace', Icons.auto_awesome_outlined, AevraColors.violet,
+    _StatSpec('campaigns', 'Campaigns', 'in workspace', Icons.auto_awesome_outlined, AevraColors.accent,
         (s) => s.campaigns.length),
-    _StatSpec('queue', 'Approval queue', 'human decisions', Icons.how_to_reg_outlined, AevraColors.cyan,
+    // Amber, not the accent: this is the one tile that means "a human still
+    // owes this a decision", and it should not be the same colour as the
+    // tiles that are merely counting things.
+    _StatSpec('queue', 'Approval queue', 'awaiting you', Icons.how_to_reg_outlined, AevraColors.amber,
         (s) => s.campaigns.where((c) => c.status == 'awaiting_approval').length),
-    _StatSpec('media', 'Media assets', 'generated assets', Icons.image_outlined, AevraColors.lime,
+    _StatSpec('media', 'Media assets', 'generated assets', Icons.image_outlined, AevraColors.jade,
         (s) => s.assets.length),
   ];
 
@@ -53,10 +55,13 @@ class _OverviewScreenState extends State<OverviewScreen> {
     });
   }
 
+  /// Passed to `onReorderItem`, whose `newIndex` is already corrected for the
+  /// removal of the dragged item. The old `onReorder` callback was not, which
+  /// is why the previous version had to subtract one by hand — doing that
+  /// here as well would drop every downward drag one slot short.
   void _reorder(int oldIndex, int newIndex) {
     HapticFeedback.mediumImpact();
     setState(() {
-      if (newIndex > oldIndex) newIndex -= 1;
       final moved = _order.removeAt(oldIndex);
       _order.insert(newIndex, moved);
     });
@@ -77,10 +82,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
         return AdaptiveGlassScroll(
           child: RefreshIndicator(
             onRefresh: state.load,
-            color: AevraColors.lime,
+            color: AevraColors.accent,
             backgroundColor: AevraColors.panel,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+              padding: const EdgeInsets.fromLTRB(
+                  AevraSpace.gutter, AevraSpace.md, AevraSpace.gutter, AevraSpace.xxl),
               children: [
                 ParallaxLayer(
                   depth: -1.6,
@@ -90,47 +96,48 @@ class _OverviewScreenState extends State<OverviewScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(
-                            'Good to see you, $firstName.',
-                            style: GoogleFonts.fraunces(
-                              fontSize: 30,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -0.02,
-                              height: 1.05,
-                              color: AevraColors.text,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('CONTROL ROOM', style: AevraType.eyebrow()),
+                              const SizedBox(height: AevraSpace.sm),
+                              Text(
+                                'Good to see you,\n$firstName.',
+                                style: AevraType.display(32),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AevraSpace.sm),
                         // #6 — shared orb, now state-aware.
                         AiOrb(state: state.loading ? AiOrbState.thinking : AiOrbState.idle),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AevraSpace.sm),
                 ParallaxLayer(
                   depth: -1.1,
                   child: const Reveal(
                     index: 1,
                     child: Text(
-                      'Your Aevra control room is connected to the workspace.',
-                      style: TextStyle(fontSize: 13, height: 1.5, color: AevraColors.muted),
+                      'Everything below is live from the workspace. Nothing publishes without you.',
+                      style: TextStyle(fontSize: 13.5, height: 1.55, color: AevraColors.textSoft),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AevraSpace.xl),
                 if (firstLoad)
                   // #4 — skeleton shimmer instead of a bare spinner.
                   Column(
                     children: List.generate(
                       2,
-                      (i) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                      (i) => const Padding(
+                        padding: EdgeInsets.only(bottom: AevraSpace.sm),
                         child: Row(
-                          children: const [
+                          children: [
                             Expanded(child: GlassCard(child: ShimmerStatCard())),
-                            SizedBox(width: 10),
+                            SizedBox(width: AevraSpace.sm),
                             Expanded(child: GlassCard(child: ShimmerStatCard())),
                           ],
                         ),
@@ -139,57 +146,84 @@ class _OverviewScreenState extends State<OverviewScreen> {
                   )
                 else
                   _bento(state),
-                const SizedBox(height: 14),
+                const SizedBox(height: AevraSpace.md),
                 Reveal(
                   index: 6,
                   child: GlassSurface(
                     elevation: GlassElevation.floating,
+                    padding: const EdgeInsets.fromLTRB(
+                        AevraSpace.md, AevraSpace.md, AevraSpace.md, AevraSpace.xs),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          children: const [
-                            Icon(Icons.auto_awesome_outlined, size: 16, color: AevraColors.lime),
-                            SizedBox(width: 8),
-                            Text('Recent campaigns',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          children: [
+                            Text('RECENT WORK', style: AevraType.eyebrow(color: AevraColors.muted)),
+                            const Spacer(),
+                            Text('${state.campaigns.length}', style: AevraType.mono()),
                           ],
                         ),
                         if (firstLoad) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AevraSpace.sm),
                           const ShimmerList(count: 3),
                         ] else if (state.campaigns.isEmpty) ...[
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AevraSpace.sm),
                           const Text(
                             'Your campaign runway is clear. Create one from the Campaigns tab.',
-                            style: TextStyle(fontSize: 11, color: AevraColors.muted2),
+                            style: TextStyle(fontSize: 12, height: 1.5, color: AevraColors.muted2),
                           ),
+                          const SizedBox(height: AevraSpace.xs),
                         ] else
-                          for (final c in state.campaigns.take(4)) ...[
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    c.name,
-                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                    overflow: TextOverflow.ellipsis,
+                          for (final c in state.campaigns.take(4))
+                            Padding(
+                              padding: const EdgeInsets.only(top: AevraSpace.sm),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 2,
+                                    height: 22,
+                                    margin: const EdgeInsets.only(right: AevraSpace.sm),
+                                    decoration: BoxDecoration(
+                                      color: _statusTint(c.status),
+                                      borderRadius: BorderRadius.circular(AevraRadius.pill),
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  c.status.replaceAll('_', ' '),
-                                  style: const TextStyle(fontSize: 9, color: AevraColors.muted2),
-                                ),
-                              ],
+                                  Expanded(
+                                    child: Text(
+                                      c.name,
+                                      style: const TextStyle(
+                                          fontSize: 12.5, fontWeight: FontWeight.w600),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: AevraSpace.xs),
+                                  Text(
+                                    c.status.replaceAll('_', ' '),
+                                    style: AevraType.mono(size: 9, color: _statusTint(c.status)),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
+                        const SizedBox(height: AevraSpace.xs),
                       ],
                     ),
                   ),
                 ),
                 if (state.error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(state.error!, style: const TextStyle(fontSize: 11, color: Color(0xFFFFB4AA))),
+                  const SizedBox(height: AevraSpace.sm),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AevraSpace.sm, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AevraColors.rose.withValues(alpha: 0.09),
+                      border: Border.all(color: AevraColors.rose.withValues(alpha: 0.22)),
+                      borderRadius: BorderRadius.circular(AevraRadius.sm),
+                    ),
+                    child: Text(
+                      state.error!,
+                      style: const TextStyle(fontSize: 11.5, height: 1.45, color: AevraColors.rose),
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -207,7 +241,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
       buildDefaultDragHandles: false,
       padding: EdgeInsets.zero,
       itemCount: _order.length,
-      onReorder: _reorder,
+      onReorderItem: _reorder,
       proxyDecorator: (child, index, animation) => Material(
         color: Colors.transparent,
         child: Transform.scale(scale: 1.03, child: child),
@@ -218,7 +252,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
           key: ValueKey(spec.id),
           index: position,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: AevraSpace.sm),
             child: Reveal(index: 2 + position, child: _tile(spec, spec.read(state))),
           ),
         );
@@ -232,29 +266,37 @@ class _OverviewScreenState extends State<OverviewScreen> {
     // with it in the gesture arena.
     return DepthCard(
       elevation: GlassElevation.floating,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(AevraSpace.md, AevraSpace.md, AevraSpace.sm, AevraSpace.md),
       child: Row(
         children: [
+          // A squircle chip rather than a circle: circles read as avatars,
+          // and these are categories, not people.
           Container(
-            width: 36,
-            height: 36,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: spec.color.withOpacity(0.10),
-              border: Border.all(color: spec.color.withOpacity(0.22)),
+              borderRadius: BorderRadius.circular(AevraRadius.sm),
+              color: spec.color.withValues(alpha: 0.10),
+              border: Border.all(color: spec.color.withValues(alpha: 0.20)),
             ),
             child: Icon(spec.icon, size: 17, color: spec.color),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AevraSpace.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(spec.label,
-                    style: const TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w500, color: AevraColors.muted)),
-                const SizedBox(height: 2),
-                Text(spec.caption, style: const TextStyle(fontSize: 9, color: AevraColors.muted2)),
+                Text(
+                  spec.label,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AevraColors.text,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(spec.caption, style: AevraType.mono(size: 9.5)),
               ],
             ),
           ),
@@ -264,20 +306,26 @@ class _OverviewScreenState extends State<OverviewScreen> {
             curve: Curves.easeOutCubic,
             builder: (context, animated, _) => Text(
               animated.round().toString(),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w600,
-                color: spec.color,
-                letterSpacing: -0.02,
-              ),
+              // Tabular figures: without them a counter ticking 8 → 9 → 10
+              // reflows the whole row as the glyph widths change.
+              style: AevraType.metric(30, color: spec.color),
             ),
           ),
-          const SizedBox(width: 10),
-          const Icon(Icons.drag_indicator_rounded, size: 16, color: AevraColors.muted2),
+          const SizedBox(width: AevraSpace.xs),
+          const Icon(Icons.drag_indicator_rounded, size: 15, color: AevraColors.muted2),
         ],
       ),
     );
   }
+
+  /// Shared status tint, so a campaign's colour is the same on the overview
+  /// as it is in the campaigns list.
+  static Color _statusTint(String status) => switch (status) {
+        'approved' || 'ready' || 'published' => AevraColors.jade,
+        'awaiting_approval' => AevraColors.amber,
+        'failed' || 'rejected' => AevraColors.rose,
+        _ => AevraColors.muted2,
+      };
 }
 
 extension _FirstOrNull<T> on List<T> {

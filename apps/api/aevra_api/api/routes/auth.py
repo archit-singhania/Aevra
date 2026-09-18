@@ -126,3 +126,24 @@ def request_account_deletion(
         requested_at=item.requested_at,
         scheduled_for=item.scheduled_for,
     )
+
+
+@router.post("/account-deletion/cancel", status_code=status.HTTP_204_NO_CONTENT)
+def cancel_account_deletion(
+    current_user: CurrentUser,
+    session: SessionDep,
+    response: Response,
+) -> Response:
+    """Cancel a requested deletion during the grace period."""
+    item = session.scalar(
+        select(AccountDeletionRequest).where(
+            AccountDeletionRequest.user_id == current_user.id,
+            AccountDeletionRequest.status == "requested",
+        )
+    )
+    if item is None:
+        raise ConflictError("No cancellable account deletion request exists")
+    item.status = "cancelled"
+    session.commit()
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response

@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Aevra chart kit — a self-contained SVG chart library themed on the brass /
- * ink-emerald / platinum palette (see globals.css tokens). No charting
+ * Aevra chart kit — a self-contained SVG chart library themed on the Nocturne
+ * palette (copper / jade / frost, see globals.css tokens). No charting
  * dependency: every chart below is hand-rolled SVG so it inherits the same
  * restrained-glow, instrument-panel language as the rest of the workspace.
  *
@@ -15,7 +15,25 @@ import { motion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import { useId, useMemo } from "react";
 
-const PALETTE = ["#c9a45c", "#3f5d52", "#b8bec7", "#8a6d3b", "#6f9483", "#7d838c", "#e0c68f"];
+/**
+ * Series order matters: the first three are the three brand signals (copper,
+ * jade, frost) and carry the same meaning here as everywhere else in the app.
+ * The remaining four are deliberately desaturated neighbours rather than new
+ * hues — a chart with seven equally loud colours is a chart nobody reads.
+ *
+ * Literals rather than `var(--…)`: these values are also fed to SVG
+ * `fill`/`stroke` attributes and to gradient stop interpolation, where a
+ * custom property resolves to a string the interpolation maths can't use.
+ */
+const PALETTE = [
+  "#c4855a", // copper — primary signal
+  "#4e9c82", // jade — positive
+  "#8fa7c2", // frost — informational
+  "#d4a244", // amber — pending
+  "#7a6a5e", // ash copper
+  "#5f7a72", // ash jade
+  "#e0a87d", // copper, lifted
+];
 
 function colorAt(i: number) {
   return PALETTE[i % PALETTE.length];
