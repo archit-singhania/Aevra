@@ -52,6 +52,24 @@ variants, generate media, connect a staging publisher, and publish or schedule. 
 browser never receives a platform OAuth token; staging publisher connections use vault
 references and the production OAuth review remains a separate deployment step.
 
+### Provider OAuth staging
+
+The API now exposes signed, workspace-bound OAuth handshakes for Facebook, Instagram, Threads,
+LinkedIn, and YouTube:
+
+```text
+GET /api/v1/workspaces/{workspace_id}/publishing/oauth/{provider}/authorize
+GET /api/v1/oauth/{provider}/callback
+```
+
+Set `AEVRA_OAUTH_REDIRECT_BASE_URL` to the public API origin and
+`AEVRA_OAUTH_FRONTEND_URL` to the public web origin. Add provider client IDs/secrets only in
+Render/Vercel environment settings; never commit them. Each provider must whitelist the exact
+callback URL ending in `/api/v1/oauth/{provider}/callback` (one stable URL per provider).
+The callback exchanges the one-time code server-side, encrypts the returned access token with
+`AEVRA_TOKEN_VAULT_KEY`, and stores only non-secret account metadata. Provider app review, refresh
+token rotation, and live publishing permissions remain provider-side production work.
+
 For an API-only local workflow:
 
 ```bash

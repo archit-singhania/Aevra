@@ -9,13 +9,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from services.workers.celery_app import celery_app
-
 from aevra_api.config import get_settings
 from aevra_api.db.models import ScheduledPost
 from aevra_api.db.session import SessionLocal
+from aevra_api.domain.errors import DomainError
+from aevra_api.publishing.contracts import PublisherError
 from aevra_api.schemas.publishing import PublishRequest
 from aevra_api.services.publishing import PublishingService
+
+from services.workers.celery_app import celery_app
 
 
 def _task(**kwargs: Any):
@@ -68,7 +70,7 @@ def dispatch_due_posts(_task_instance: Any) -> dict[str, str | int]:
                 item.published_job_id = job.id
                 item.status = "published" if job.status in {"published", "verified"} else "failed"
                 item.error_message = job.error_message
-            except Exception as error:
+            except (DomainError, PublisherError, TimeoutError, ConnectionError, ValueError) as error:
                 item.status = "failed"
                 item.error_message = str(error)[:1000]
             session.commit()

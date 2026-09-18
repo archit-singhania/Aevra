@@ -12,6 +12,17 @@
   --violet: #3f5d52;
   --cyan: #b8bec7;
   --focus: rgba(201, 164, 92, 0.55);
+  --accent: #c9a45c;
+  --accent-strong: #e0c68f;
+  --accent-ink: #171208;
+  --surface-0: #0a0b0d;
+  --surface-1: #111318;
+  --surface-2: #171b1e;
+  --surface-3: #20262a;
+  --text-strong: #efece4;
+  --text-soft: #a9a49a;
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-geist:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -77,7 +88,8 @@
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(circle at 18% -8%, rgba(201, 164, 92, 0.07), transparent 38%),
+  background:
+    radial-gradient(circle at 18% -8%, rgba(201, 164, 92, 0.07), transparent 38%),
     radial-gradient(circle at 82% 100%, rgba(63, 93, 82, 0.06), transparent 42%);
   pointer-events: none;
 }
@@ -2832,16 +2844,117 @@ body {
 .live-auth > .grain-overlay {
   z-index: 1;
 }
-.live-auth > .hero-video {
+.live-auth > .hero-visual {
   position: fixed;
   inset: 0;
   z-index: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  opacity: 0.46;
-  filter: saturate(0.82) brightness(0.72) contrast(1.04);
   pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(63, 93, 82, 0.42), transparent 38%),
+    radial-gradient(circle at 78% 13%, rgba(201, 164, 92, 0.22), transparent 34%),
+    radial-gradient(circle at 66% 88%, rgba(184, 190, 199, 0.11), transparent 36%), #080b0d;
+}
+
+.hero-visual::before,
+.hero-visual::after,
+.hero-visual-grid {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  pointer-events: none;
+}
+
+.hero-visual::before {
+  background:
+    linear-gradient(118deg, transparent 0 30%, rgba(232, 211, 166, 0.08) 42%, transparent 56%),
+    linear-gradient(28deg, transparent 0 44%, rgba(63, 93, 82, 0.16) 55%, transparent 69%);
+  filter: blur(26px);
+  transform: rotate(-7deg) scale(1.1);
+}
+
+.hero-visual::after {
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 36%,
+      rgba(4, 7, 8, 0.42) 76%,
+      rgba(4, 7, 8, 0.9)
+    ),
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 46px);
+  opacity: 0.72;
+}
+
+.hero-visual-grid {
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(232, 211, 166, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 211, 166, 0.04) 1px, transparent 1px);
+  background-size: 76px 76px;
+  mask-image: linear-gradient(to bottom, transparent, black 24%, black 76%, transparent);
+  opacity: 0.32;
+}
+
+.hero-visual-orb {
+  position: absolute;
+  display: block;
+  width: min(46vw, 620px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(24px);
+  opacity: 0.48;
+  mix-blend-mode: screen;
+  transform: translate3d(0, 0, 0);
+}
+
+.hero-visual-orb-one {
+  top: -20%;
+  left: 10%;
+  background: radial-gradient(circle at 55% 50%, rgba(63, 93, 82, 0.7), transparent 66%);
+}
+
+.hero-visual-orb-two {
+  top: 16%;
+  right: -14%;
+  background: radial-gradient(circle at 50% 50%, rgba(201, 164, 92, 0.62), transparent 64%);
+}
+
+.hero-visual-orb-three {
+  bottom: -28%;
+  left: 34%;
+  background: radial-gradient(circle at 50% 50%, rgba(184, 190, 199, 0.3), transparent 64%);
+}
+
+.hero-visual.is-animated .hero-visual-orb-one {
+  animation: hero-orb-one 16s ease-in-out infinite alternate;
+}
+
+.hero-visual.is-animated .hero-visual-orb-two {
+  animation: hero-orb-two 20s ease-in-out infinite alternate;
+}
+
+.hero-visual.is-animated .hero-visual-orb-three {
+  animation: hero-orb-three 24s ease-in-out infinite alternate;
+}
+
+@keyframes hero-orb-one {
+  to {
+    transform: translate3d(8vw, 5vh, 0) scale(1.12);
+  }
+}
+
+@keyframes hero-orb-two {
+  to {
+    transform: translate3d(-7vw, 6vh, 0) scale(0.86);
+  }
+}
+
+@keyframes hero-orb-three {
+  to {
+    transform: translate3d(-5vw, -4vh, 0) scale(1.18);
+  }
 }
 .live-auth > .hero-video-overlay {
   position: fixed;
@@ -2857,6 +2970,49 @@ body {
       rgba(10, 11, 13, 0.8) 100%
     ),
     radial-gradient(circle at 78% 18%, rgba(201, 164, 92, 0.14), transparent 55%);
+}
+
+/* The original landing artwork is a QuickTime file. Keep it as the preferred
+   hero source, but let the CSS visual remain underneath it for browsers that
+   cannot decode `.MOV`; the landing copy never waits for either resource. */
+.live-auth > .hero-video-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(63, 93, 82, 0.42), transparent 38%),
+    radial-gradient(circle at 78% 13%, rgba(201, 164, 92, 0.22), transparent 34%),
+    radial-gradient(circle at 66% 88%, rgba(184, 190, 199, 0.11), transparent 36%), #080b0d;
+}
+
+.hero-video-stage .hero-visual {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero-video-stage .hero-video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+
+.hero-video-stage.has-video .hero-video {
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-video-stage .hero-video {
+    display: none;
+  }
 }
 .live-auth > section,
 .live-auth > form {
@@ -2966,7 +3122,10 @@ body {
    in one frame; the creation/review views retain the scroll rail for their
    denser forms. */
 .live-app.view-overview .live-content {
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  scrollbar-gutter: stable;
 }
 .live-app.view-overview .live-content .reveal {
   opacity: 1;
@@ -3312,9 +3471,8 @@ body {
 }
 
 /* ---- Premium command-center pass: type pairing, density, restrained glow ---- */
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,380..600&display=swap");
 :root {
-  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", ui-serif, Georgia, serif;
 }
 .live-hero h1,
 .live-auth > section h1,
@@ -3531,6 +3689,290 @@ body {
     rgba(var(--glass-sheen), 0.04) 32%,
     transparent 62%
   );
+}
+
+/* ------------------------------------------------------------------
+   Final theme contract. These semantic values are intentionally defined
+   after the legacy component rules so every surface follows the same
+   light/dark switch, including charts and empty states.
+   ------------------------------------------------------------------ */
+html[data-theme="light"] {
+  --bg: #f3f1ec;
+  --panel: #fbfaf7;
+  --line: rgba(41, 46, 48, 0.12);
+  --line-strong: rgba(41, 46, 48, 0.22);
+  --text: #1f2526;
+  --text-strong: #172021;
+  --text-soft: #566062;
+  --muted: #667174;
+  --muted-2: #7e898b;
+  --lime: #8d6b2c;
+  --violet: #2d5b4b;
+  --cyan: #486b78;
+  --accent: #8d6b2c;
+  --accent-strong: #6f5120;
+  --accent-ink: #fffaf0;
+  --surface-0: #f3f1ec;
+  --surface-1: #fbfaf7;
+  --surface-2: #ffffff;
+  --surface-3: #e9e7df;
+  --glass-tint: 255, 255, 255;
+  --glass-sheen: 141, 107, 44;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .live-app {
+  background: var(--bg);
+  color: var(--text);
+}
+
+html[data-theme="light"] .live-app {
+  background:
+    radial-gradient(circle at 12% -10%, rgba(141, 107, 44, 0.13), transparent 32%),
+    radial-gradient(circle at 92% 100%, rgba(45, 91, 75, 0.11), transparent 38%), var(--bg);
+}
+
+html[data-theme="light"] .live-sidebar,
+html[data-theme="light"] .live-topbar {
+  color: var(--text);
+  background: rgba(251, 250, 247, 0.86);
+  border-color: var(--line);
+}
+
+html[data-theme="light"] .live-sidebar nav button {
+  color: #5d696b;
+}
+
+html[data-theme="light"] .live-sidebar nav button:hover,
+html[data-theme="light"] .live-sidebar nav button.active {
+  color: var(--text-strong);
+  background: rgba(141, 107, 44, 0.12);
+}
+
+html[data-theme="light"] .live-panel,
+html[data-theme="light"] .live-stats article,
+html[data-theme="light"] .chart-card,
+html[data-theme="light"] .live-asset {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.76);
+  border-color: var(--line);
+  box-shadow: 0 12px 30px rgba(47, 53, 50, 0.08);
+}
+
+html[data-theme="light"] .live-field input,
+html[data-theme="light"] .live-field textarea,
+html[data-theme="light"] .live-field select,
+html[data-theme="light"] .live-search input {
+  color: var(--text-strong);
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
+html[data-theme="light"] .live-hero h1,
+html[data-theme="light"] .live-panel h2,
+html[data-theme="light"] .live-stats strong,
+html[data-theme="light"] .live-list-row b,
+html[data-theme="light"] .live-empty strong {
+  color: var(--text-strong);
+}
+
+html[data-theme="light"] .live-hero p:not(.live-kicker),
+html[data-theme="light"] .live-list-row small,
+html[data-theme="light"] .live-stats span,
+html[data-theme="light"] .live-stats small,
+html[data-theme="light"] .live-empty,
+html[data-theme="light"] .live-helper {
+  color: var(--text-soft);
+}
+
+html[data-theme="light"] .live-command-trigger,
+html[data-theme="light"] .sound-toggle,
+html[data-theme="light"] .live-theme-toggle,
+html[data-theme="light"] .live-refresh {
+  color: #465456 !important;
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+html[data-theme="light"] .live-status {
+  color: #526063;
+  background: rgba(45, 91, 75, 0.1);
+}
+
+html[data-theme="light"] .command-layer,
+html[data-theme="light"] .onboarding-layer {
+  background: rgba(230, 228, 221, 0.65);
+}
+
+html[data-theme="light"] .command-dialog,
+html[data-theme="light"] .onboarding-card {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--line-strong);
+  box-shadow: 0 28px 80px rgba(47, 53, 50, 0.18);
+}
+
+html[data-theme="light"] .command-input input {
+  color: var(--text-strong);
+}
+
+html[data-theme="light"] .hero-video-overlay {
+  background:
+    linear-gradient(
+      115deg,
+      rgba(243, 241, 236, 0.92),
+      rgba(243, 241, 236, 0.55) 46%,
+      rgba(243, 241, 236, 0.8)
+    ),
+    radial-gradient(circle at 78% 18%, rgba(141, 107, 44, 0.12), transparent 55%);
+}
+
+html[data-theme="light"] .hero-visual {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(45, 91, 75, 0.18), transparent 38%),
+    radial-gradient(circle at 78% 13%, rgba(141, 107, 44, 0.18), transparent 34%), #f3f1ec;
+  mix-blend-mode: multiply;
+  opacity: 0.74;
+}
+
+/* A clear, useful first-run overview even when the workspace has no data. */
+.overview-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.overview-action {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  min-height: 72px;
+  padding: 13px 14px;
+  color: inherit;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
+}
+
+.overview-action:hover {
+  border-color: var(--line-strong);
+  background: rgba(201, 164, 92, 0.08);
+}
+
+.overview-action svg:first-child {
+  color: var(--accent);
+}
+
+.overview-action strong,
+.overview-action small {
+  display: block;
+}
+
+.overview-action strong {
+  font-size: 11px;
+  color: var(--text-strong);
+}
+
+.overview-action small {
+  margin-top: 3px;
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.oauth-connect-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 4px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.oauth-connect-button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px 11px;
+  color: var(--text-strong);
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+}
+
+.oauth-connect-button:hover {
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface-2));
+}
+
+.oauth-connect-button > span:nth-child(2) {
+  min-width: 0;
+}
+
+.oauth-connect-button strong,
+.oauth-connect-button small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oauth-connect-button strong {
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.oauth-connect-button small {
+  margin-top: 2px;
+  color: var(--text-soft);
+  font-size: 9px;
+}
+
+.oauth-connect-mark {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--accent-ink);
+  background: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .oauth-connect-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+html[data-theme="light"] .oauth-connect-button {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+@media (max-width: 850px) {
+  .overview-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Backdrop filters are expensive per-layer. On coarse pointers there is
@@ -3764,5 +4206,3 @@ html:not([data-theme="light"]) .live-auth-card {
   position: relative;
   z-index: 1;
 }
-
-

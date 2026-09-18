@@ -10,9 +10,9 @@ export default function TermsPage() {
       </Reveal3D>
       <GlassPane as="section" elevation="floating" className="legal-card">
         <p>
-          VAE is a campaign intelligence and workflow tool. You remain responsible for your
-          prompts, source material, approvals, publishing decisions, platform policies, and
-          generated content.
+          VAE is a campaign intelligence and workflow tool. You remain responsible for your prompts,
+          source material, approvals, publishing decisions, platform policies, and generated
+          content.
         </p>
         <h2>Provider access</h2>
         <p>

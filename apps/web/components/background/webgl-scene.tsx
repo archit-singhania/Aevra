@@ -235,7 +235,11 @@ export function WebglScene() {
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        alpha: false,
+        powerPreference: "high-performance",
+      });
     } catch {
       // No WebGL (or it was blocked). The CSS ambient glows stand in.
       return;
@@ -295,7 +299,7 @@ export function WebglScene() {
       seeds[i * 4 + 3] = rand() * 100;
       spins[i * 3 + 0] = (rand() - 0.5) * 0.16;
       spins[i * 3 + 1] = (rand() - 0.5) * 0.16;
-      spins[i * 3 + 2] = (rand() - 0.5) * 0.10;
+      spins[i * 3 + 2] = (rand() - 0.5) * 0.1;
       scales[i] = 0.18 + rand() * 0.62;
     }
 
@@ -335,8 +339,8 @@ export function WebglScene() {
     };
 
     function setSize() {
-      const width = container!.clientWidth || window.innerWidth;
-      const height = container!.clientHeight || window.innerHeight;
+      const width = container?.clientWidth || window.innerWidth;
+      const height = container?.clientHeight || window.innerHeight;
       renderer.setSize(width, height, false);
       backdropUniforms.uResolution.value.set(width, height);
       camera.aspect = width / height;
@@ -378,7 +382,7 @@ export function WebglScene() {
 
       // Frame-rate independent easing, so parallax feels identical at 60
       // and 120Hz rather than twice as fast on a ProMotion display.
-      const ease = 1 - Math.pow(0.001, delta);
+      const ease = 1 - 0.001 ** delta;
       pointer.lerp(pointerTarget, ease);
       scrollEased += (scrollTarget - scrollEased) * ease;
       backdropUniforms.uPointer.value.copy(pointer);

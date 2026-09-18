@@ -1,6 +1,6 @@
 # VAE production-readiness audit
 
-Updated 17 September 2026 after the staging hardening pass.
+Updated 18 September 2026 after the UI, OAuth-boundary, and quality-gate pass.
 
 ## Implemented in the codebase
 
@@ -12,7 +12,9 @@ Updated 17 September 2026 after the staging hardening pass.
 - Ollama has a real `/models/local/generate/stream` Server-Sent Events endpoint. The web brief also supports browser-native voice capture without uploading audio to VAE.
 - Mobile now has an accessible light/dark theme switch with matching contrast tokens.
 - Privacy, terms, and account-deletion pages are available in the web app. The API records a confirmed account-deletion request with a 30-day grace period and migration.
-- CI runs web checks, API tests, mypy, migration upgrade/downgrade, and service compilation. The API suite currently passes 62 tests.
+- Signed, workspace-bound OAuth authorize/callback routes now cover Facebook, Instagram, Threads, LinkedIn, and YouTube. Returned provider tokens are exchanged server-side and encrypted by the existing vault boundary; no provider token is returned to the browser. Callback allowlists use the stable `/api/v1/oauth/{provider}/callback` path.
+- The overview now renders a useful first-run state when collections are empty, secondary API failures degrade per-panel, and the dashboard scrolls in its own content region. Dark/light tokens, motion preferences, chart accessibility labels, and the codec-free hero visual are applied consistently.
+- CI-local gates are green: web typecheck, web Biome, Ruff, mypy, and **62 API tests**.
 
 ## Still requires your deployment or provider decisions
 
@@ -25,7 +27,7 @@ Updated 17 September 2026 after the staging hardening pass.
 
 ## Remaining engineering before a production launch
 
-- Implement provider-specific OAuth authorization/callback/refresh flows and token rotation, then add automated contract tests against each approved sandbox.
+- Add provider-specific token refresh/revoke flows and one-time state replay protection, then add automated contract tests against each approved sandbox. The authorization/callback foundation is now in the codebase.
 - Add real platform analytics adapters and polling tasks; the normalized metric model and dashboard endpoints are ready, but live metrics require platform credentials and permissions.
 - Export traces/metrics to an OpenTelemetry Collector/Grafana/alert destination. `/metrics` and request instrumentation are the local boundary; an external exporter is still needed.
 - Connect the web campaign generation UI to the SSE endpoint (the backend stream is ready); keep the existing visual typewriter as the fallback for deterministic staging.
@@ -37,5 +39,5 @@ Updated 17 September 2026 after the staging hardening pass.
 1. Add the production secrets and persistent service URLs in Render/Vercel.
 2. Deploy the API, web app, and dedicated worker/beat processes; run `alembic upgrade head` once against the production database.
 3. Configure the custom domain and validate login, logout, asset download, SSE generation, scheduling, and deletion-request flows over HTTPS.
-4. Register the platform apps and supply their credentials for the OAuth implementation pass.
+4. Register the platform apps, set the exact callback URLs, and add the client IDs/secrets to Render; app review and provider approval remain external.
 5. Turn on backups, restore testing, monitoring/alerts, billing limits, and reviewed legal pages.

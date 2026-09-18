@@ -57,6 +57,17 @@ class Settings(BaseSettings):
     minio_secret_key: str = "aevra-development-only"
     minio_bucket: str = "aevra-assets"
     minio_secure: bool = False
+    oauth_state_minutes: int = Field(default=10, ge=2, le=30)
+    oauth_redirect_base_url: str = "http://localhost:8000"
+    oauth_frontend_url: str = "http://localhost:3000"
+    meta_oauth_client_id: str | None = None
+    meta_oauth_client_secret: str | None = None
+    threads_oauth_client_id: str | None = None
+    threads_oauth_client_secret: str | None = None
+    linkedin_oauth_client_id: str | None = None
+    linkedin_oauth_client_secret: str | None = None
+    youtube_oauth_client_id: str | None = None
+    youtube_oauth_client_secret: str | None = None
 
     @property
     def use_secure_session_cookie(self) -> bool:

@@ -29,7 +29,7 @@ def normalize_metrics(
     def non_negative(name: str) -> int:
         value = payload.get(name, 0)
         if not isinstance(value, int) or isinstance(value, bool):
-            raise ValueError(f"{name} must be an integer")
+            raise TypeError(f"{name} must be an integer")
         if value < 0:
             raise ValueError(f"{name} must be non-negative")
         return value

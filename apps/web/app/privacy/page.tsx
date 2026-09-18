@@ -20,8 +20,8 @@ export default function PrivacyPage() {
         </p>
         <h2>Your controls</h2>
         <p>
-          You can export workspace data, disconnect providers, and request account deletion from
-          the account controls.
+          You can export workspace data, disconnect providers, and request account deletion from the
+          account controls.
         </p>
       </GlassPane>
       <p className="legal-muted">

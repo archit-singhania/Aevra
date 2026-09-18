@@ -288,6 +288,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  oauthAuthorize: (
+    token: string,
+    workspaceId: string,
+    provider: Extract<Platform, "facebook" | "instagram" | "threads" | "linkedin" | "youtube">,
+  ) =>
+    request<{ provider: string; authorization_url: string; expires_in: number }>(
+      `/workspaces/${workspaceId}/publishing/oauth/${provider}/authorize`,
+      token,
+    ),
   publish: (token: string, workspaceId: string, payload: Record<string, unknown>) =>
     request<PublishJob>(`/workspaces/${workspaceId}/publishing/jobs`, token, {
       method: "POST",

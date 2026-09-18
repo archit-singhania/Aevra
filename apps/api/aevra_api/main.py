@@ -8,6 +8,8 @@ from aevra_api.api.routes.campaigns import router as campaigns_router
 from aevra_api.api.routes.knowledge import router as knowledge_router
 from aevra_api.api.routes.media import router as media_router
 from aevra_api.api.routes.models import router as models_router
+from aevra_api.api.routes.oauth import callback_router as oauth_callback_router
+from aevra_api.api.routes.oauth import router as oauth_router
 from aevra_api.api.routes.operations import router as operations_router
 from aevra_api.api.routes.publishing import router as publishing_router
 from aevra_api.api.routes.workspaces import router as workspaces_router
@@ -44,6 +46,8 @@ app.include_router(models_router, prefix="/api/v1")
 app.include_router(campaigns_router, prefix="/api/v1")
 app.include_router(media_router, prefix="/api/v1")
 app.include_router(publishing_router, prefix="/api/v1")
+app.include_router(oauth_router, prefix="/api/v1")
+app.include_router(oauth_callback_router, prefix="/api/v1")
 app.include_router(operations_router, prefix="/api/v1")
 
 

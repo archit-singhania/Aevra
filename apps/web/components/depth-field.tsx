@@ -78,7 +78,9 @@ export function DepthField() {
       // dragging the page would otherwise leave cards tilted behind it.
       if (event.pointerType === "touch") return;
 
-      const target = (event.target as Element | null)?.closest?.(TILT_SELECTOR) as HTMLElement | null;
+      const target = (event.target as Element | null)?.closest?.(
+        TILT_SELECTOR,
+      ) as HTMLElement | null;
 
       if (target !== active) {
         clear(active);

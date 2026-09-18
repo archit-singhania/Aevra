@@ -1,6 +1,6 @@
 # Remaining nine areas — implementation audit
 
-> Status refreshed 17 September 2026. The integrated hardening pass is tracked in
+> Status refreshed 18 September 2026. The integrated hardening pass is tracked in
 > [production-readiness.md](production-readiness.md); this file preserves the original phase-by-phase notes.
 
 The nine production extensions now have free/self-hosted foundations. External platform
@@ -10,8 +10,9 @@ deployment responsibilities.
 ## 1. OAuth and token vault
 
 Implemented `LocalTokenVault` with authenticated encrypted envelopes and tamper detection.
-Production handoff: replace the master-key provider with Vault/KMS transit while keeping the
-same interface, then add provider-specific OAuth callbacks and refresh-token rotation.
+Implemented the signed, workspace-bound authorize/callback foundation for Meta, Threads,
+LinkedIn, and YouTube. Production handoff: replace the master-key provider with Vault/KMS transit,
+add one-time state replay protection, and implement provider-specific refresh/revoke rotation.
 
 ## 2. Media upload workflows
 
@@ -63,7 +64,7 @@ versioning/lifecycle rules, and switch media services to the object-storage back
 
 ## Verification
 
-- API suite: **60 passed**.
+- API suite: **62 passed**.
 - Ruff: clean.
-- Mypy: clean across 77 API source files.
-- Existing frontend checks remain available through `pnpm check`.
+- Mypy: clean across 79 API source files.
+- Web typecheck, Biome, and production build pass; Flutter remains unverified when the SDK is not installed on the host.

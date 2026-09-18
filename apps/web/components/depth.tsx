@@ -1,7 +1,14 @@
 "use client";
 
-import { type MotionValue, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from "motion/react";
-import { motion } from "motion/react";
+import {
+  type MotionValue,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from "motion/react";
 import { type CSSProperties, type ReactNode, useCallback, useRef } from "react";
 
 /* ------------------------------------------------------------------ *
@@ -87,12 +94,12 @@ export function DepthCard({
           <motion.span
             aria-hidden="true"
             className="depth-pane-sheen"
-            style={{
-              // biome-ignore lint/style/useNamingConvention: CSS custom property
-              "--sheen-x": sheenX,
-              // biome-ignore lint/style/useNamingConvention: CSS custom property
-              "--sheen-y": sheenY,
-            } as unknown as CSSProperties}
+            style={
+              {
+                "--sheen-x": sheenX,
+                "--sheen-y": sheenY,
+              } as unknown as CSSProperties
+            }
           />
         )}
         <span className="depth-pane-content">{children}</span>

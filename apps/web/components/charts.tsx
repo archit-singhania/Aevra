@@ -77,7 +77,13 @@ export function LineChart({
   });
   const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Line chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="0" y1={h - 22} x2={w} y2={h - 22} stroke="var(--line)" />
       <motion.path
         d={path}
@@ -99,13 +105,7 @@ export function LineChart({
 }
 
 /* ---------------------------------------------------------------- 2. Area */
-export function AreaChart({
-  values,
-  color = colorAt(0),
-}: {
-  values: number[];
-  color?: string;
-}) {
+export function AreaChart({ values, color = colorAt(0) }: { values: number[]; color?: string }) {
   const w = 600;
   const h = 200;
   const { lo, hi } = useAxisScale(values);
@@ -118,7 +118,13 @@ export function AreaChart({
   const line = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
   const area = `${line} L${pts[pts.length - 1]?.[0] ?? 0},${h - 22} L${pts[0]?.[0] ?? 0},${h - 22} Z`;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Area chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.34} />
@@ -165,8 +171,8 @@ export function StreamChart({
   let cumulative = new Array(len).fill(0);
   const bands = series.map((s, si) => {
     const top = cumulative.map((c, i) => c + (s.values[i] ?? 0));
-    const bandTop = top.map((v, i) => h - 20 - (v / max) * (h - 36));
-    const bandBottom = cumulative.map((v, i) => h - 20 - (v / max) * (h - 36));
+    const bandTop = top.map((v) => h - 20 - (v / max) * (h - 36));
+    const bandBottom = cumulative.map((v) => h - 20 - (v / max) * (h - 36));
     cumulative = top;
     const x = (i: number) => (i / Math.max(1, len - 1)) * (w - 24) + 12;
     const topPath = bandTop.map((y, i) => `${i === 0 ? "M" : "L"}${x(i)},${y}`).join(" ");
@@ -177,7 +183,13 @@ export function StreamChart({
     return { d: `${topPath} ${bottomPath} Z`, color: s.color ?? colorAt(si), name: s.name };
   });
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Stream chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       {bands.map((b) => (
         <motion.path
           key={b.name}
@@ -212,7 +224,13 @@ export function BarChart({
   const gap = 10;
   const bw = (w - gap * (values.length + 1)) / Math.max(1, values.length);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Bar chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="0" y1={h - 26} x2={w} y2={h - 26} stroke="var(--line)" />
       {values.map((v, i) => {
         const bh = (v / max) * (h - 46);
@@ -287,7 +305,13 @@ export function GroupedBarChart({
   const groupW = (w - groupGap * (groups.length + 1)) / Math.max(1, groups.length);
   const barW = groupW / series.length;
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Grouped bar chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="0" y1={h - 26} x2={w} y2={h - 26} stroke="var(--line)" />
       {groups.map((g, gi) => {
         const gx = groupGap + gi * (groupW + groupGap);
@@ -337,7 +361,13 @@ export function StackedBarChart({
   const gap = 16;
   const bw = (w - gap * (groups.length + 1)) / Math.max(1, groups.length);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Stacked bar chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="0" y1={h - 26} x2={w} y2={h - 26} stroke="var(--line)" />
       {groups.map((g, gi) => {
         const x = gap + gi * (bw + gap);
@@ -390,7 +420,13 @@ export function DonutChart({
   let offset = 0;
   return (
     <div className="chart-donut">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg
+        role="img"
+        aria-label="Donut chart"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+      >
         <g transform={`translate(${size / 2},${size / 2}) rotate(-90)`}>
           <circle r={r} fill="none" stroke="var(--line)" strokeWidth={16} />
           {items.map((item, i) => {
@@ -452,7 +488,13 @@ export function PieChart({
   const cy = size / 2;
   return (
     <div className="chart-donut">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg
+        role="img"
+        aria-label="Pie chart"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+      >
         {items.map((item, i) => {
           const frac = item.value / total;
           const start = angle;
@@ -504,7 +546,13 @@ export function PolarAreaChart({
   const rMax = size / 2 - 22;
   const step = (Math.PI * 2) / items.length;
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      role="img"
+      aria-label="Polar area chart"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+    >
       {[0.33, 0.66, 1].map((f) => (
         <circle key={f} cx={cx} cy={cy} r={rMax * f} fill="none" stroke="var(--line)" />
       ))}
@@ -550,7 +598,13 @@ export function RadialBarChart({
   const step = 14;
   return (
     <div className="chart-donut">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg
+        role="img"
+        aria-label="Radial bar chart"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+      >
         {items.map((item, i) => {
           const r = base + i * step;
           const c = 2 * Math.PI * r;
@@ -609,7 +663,13 @@ export function GaugeChart({
   const y = cy - r * Math.sin(angle);
   const c = Math.PI * r;
   return (
-    <svg width={size} height={size / 1.7} viewBox={`0 0 ${size} ${size / 1.7}`}>
+    <svg
+      role="img"
+      aria-label="Gauge chart"
+      width={size}
+      height={size / 1.7}
+      viewBox={`0 0 ${size} ${size / 1.7}`}
+    >
       <path
         d={`M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}`}
         fill="none"
@@ -661,8 +721,21 @@ export function ProgressRing({
   const frac = Math.min(1, value / max);
   return (
     <div className="chart-ring">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth={7} />
+      <svg
+        role="img"
+        aria-label="Radar chart"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="var(--line)"
+          strokeWidth={7}
+        />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
@@ -706,7 +779,13 @@ export function RadarChart({
     return [cx + r * frac * Math.cos(a), cy + r * frac * Math.sin(a)] as const;
   };
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      role="img"
+      aria-label="Radar chart"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+    >
       {[0.25, 0.5, 0.75, 1].map((f) => (
         <polygon
           key={f}
@@ -762,7 +841,13 @@ export function ScatterChart({
   const { lo: xlo, hi: xhi } = useAxisScale(xs);
   const { lo: ylo, hi: yhi } = useAxisScale(ys);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Scatter chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="30" y1="6" x2="30" y2={h - 26} stroke="var(--line)" />
       <line x1="30" y1={h - 26} x2={w - 6} y2={h - 26} stroke="var(--line)" />
       {points.map((p, i) => {
@@ -789,7 +874,13 @@ export function ScatterChart({
         </text>
       )}
       {yLabel && (
-        <text x={10} y={h / 2} textAnchor="middle" className="chart-tick" transform={`rotate(-90 10 ${h / 2})`}>
+        <text
+          x={10}
+          y={h / 2}
+          textAnchor="middle"
+          className="chart-tick"
+          transform={`rotate(-90 10 ${h / 2})`}
+        >
           {yLabel}
         </text>
       )}
@@ -811,7 +902,13 @@ export function BubbleChart({
   const { lo: xlo, hi: xhi } = useAxisScale(xs);
   const { lo: ylo, hi: yhi } = useAxisScale(ys);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Bubble chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="30" y1={h - 26} x2={w - 6} y2={h - 26} stroke="var(--line)" />
       {points.map((p, i) => {
         const x = 30 + ((p.x - xlo) / (xhi - xlo || 1)) * (w - 60);
@@ -873,11 +970,7 @@ export function FunnelChart({
 }
 
 /* ----------------------------------------------------------- 18. Waterfall */
-export function WaterfallChart({
-  steps,
-}: {
-  steps: Array<{ label: string; delta: number }>;
-}) {
+export function WaterfallChart({ steps }: { steps: Array<{ label: string; delta: number }> }) {
   const w = 600;
   const h = 200;
   let running = 0;
@@ -890,7 +983,13 @@ export function WaterfallChart({
   const gap = 14;
   const bw = (w - gap * (steps.length + 1)) / Math.max(1, steps.length);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Waterfall chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="0" y1={h - 26} x2={w} y2={h - 26} stroke="var(--line)" />
       {steps.map((s, i) => {
         const { start, end } = cumulative[i];
@@ -937,7 +1036,10 @@ export function HeatmapChart({
   const max = Math.max(1, ...values.flat());
   const cell = 34;
   return (
-    <div className="chart-heatmap" style={{ gridTemplateColumns: `60px repeat(${cols.length}, ${cell}px)` }}>
+    <div
+      className="chart-heatmap"
+      style={{ gridTemplateColumns: `60px repeat(${cols.length}, ${cell}px)` }}
+    >
       <span />
       {cols.map((c) => (
         <span key={c} className="chart-tick chart-heatmap-col">
@@ -1018,7 +1120,14 @@ export function Sparkline({
   });
   const d = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="chart-sparkline">
+    <svg
+      role="img"
+      aria-label="Sparkline chart"
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className="chart-sparkline"
+    >
       <motion.path
         d={d}
         fill="none"
@@ -1029,7 +1138,9 @@ export function Sparkline({
         viewport={{ once: true }}
         transition={{ duration: 0.8 }}
       />
-      {pts[pts.length - 1] && <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={2} fill={color} />}
+      {pts[pts.length - 1] && (
+        <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={2} fill={color} />
+      )}
     </svg>
   );
 }
@@ -1078,7 +1189,13 @@ export function LollipopChart({
   const max = Math.max(1, ...items.map((i) => i.value));
   const gap = (w - 40) / Math.max(1, items.length);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Lollipop chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="0" y1={h - 26} x2={w} y2={h - 26} stroke="var(--line)" />
       {items.map((item, i) => {
         const x = 24 + i * gap + gap / 2;
@@ -1136,7 +1253,15 @@ export function TreemapChart({
   let cursor = 0;
   const horizontal = width >= height;
   return (
-    <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Treemap chart"
+      width="100%"
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       {items.map((item, i) => {
         const frac = item.value / total;
         const size = frac * (horizontal ? width : height);
@@ -1183,7 +1308,13 @@ export function CandlestickChart({
   const gap = (w - 40) / Math.max(1, bars.length);
   const y = (v: number) => h - 26 - ((v - lo) / (hi - lo)) * (h - 46);
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Candlestick chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="0" y1={h - 26} x2={w} y2={h - 26} stroke="var(--line)" />
       {bars.map((b, i) => {
         const x = 24 + i * gap + gap / 2;
@@ -1236,7 +1367,13 @@ export function ComboChart({
   });
   const path = linePts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" preserveAspectRatio="none">
+    <svg
+      role="img"
+      aria-label="Combo chart"
+      viewBox={`0 0 ${w} ${h}`}
+      className="chart-svg"
+      preserveAspectRatio="none"
+    >
       <line x1="0" y1={h - 26} x2={w} y2={h - 26} stroke="var(--line)" />
       {bars.map((v, i) => {
         const bh = (v / maxBar) * (h - 60);
