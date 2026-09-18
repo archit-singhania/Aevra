@@ -3163,9 +3163,9 @@ body {
   }
 }
 
-/* Overview is a control-room canvas, not a document. Keep it fully visible
-   in one frame; the creation/review views retain the scroll rail for their
-   denser forms. */
+/* Overview uses the same scroll rail as every other workspace view. The
+   control-room cards stay compact, but the complete pipeline and next-action
+   sections must remain reachable on laptop-height viewports. */
 .live-app.view-overview .live-content {
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -3197,26 +3197,26 @@ body {
   padding: 9px 5px;
 }
 
-/* Desktop overview is a control-room frame, not a long feed. Keep the
-   greeting, signal cards, recent work, and next actions in the first viewport;
-   only the recent-work list itself gets an internal rail when it has many
-   rows. Smaller screens keep the document flow so content remains reachable.
- */
+/* Desktop overview keeps a two-column control-room grid while allowing the
+   document to grow naturally. This prevents the lower panels from being
+   clipped by a fixed-height grid and gives the parent content rail ownership
+   of scrolling, just like Campaigns, Brand Brain, and Analytics. */
 @media (min-width: 1101px) {
   .live-app.view-overview .live-content {
-    overflow: hidden;
-    padding-top: 18px;
-    padding-bottom: 20px;
+    overflow-y: auto;
+    padding-top: 24px;
+    padding-bottom: 42px;
   }
 
   .live-app.view-overview .overview-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
-    grid-template-rows: auto auto minmax(0, 1fr);
-    align-content: stretch;
+    grid-template-rows: auto;
+    align-content: start;
+    grid-auto-rows: auto;
     gap: 12px;
-    height: 100%;
-    min-height: 0;
+    height: auto;
+    min-height: min-content;
   }
 
   .live-app.view-overview .overview-layout > .live-hero,
@@ -3227,11 +3227,11 @@ body {
   }
 
   .live-app.view-overview .overview-layout > .live-panel {
-    min-height: 0;
+    min-height: 220px;
   }
 
   .live-app.view-overview .overview-layout > .live-panel:not(.overview-quick-start) {
-    overflow: auto;
+    overflow: visible;
   }
 
   .live-app.view-overview .overview-actions {

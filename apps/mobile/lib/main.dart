@@ -46,7 +46,7 @@ class _AevraAppState extends State<AevraApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Aevra',
+      title: 'VAE',
       debugShowCheckedModeBanner: false,
       theme: darkMode ? AevraTheme.dark : AevraTheme.light,
       // Wrapped via `builder`, not `home`, so dialogs, bottom sheets and
@@ -102,7 +102,7 @@ class _BootScreen extends StatelessWidget {
               children: [
                 const AevraMark(size: 52),
                 const SizedBox(height: AevraSpace.lg),
-                Text('AEVRA', style: AevraType.eyebrow(color: AevraColors.muted)),
+                Text('VAE', style: AevraType.eyebrow(color: AevraColors.muted)),
                 const SizedBox(height: AevraSpace.md),
                 const SizedBox(
                   width: 104,

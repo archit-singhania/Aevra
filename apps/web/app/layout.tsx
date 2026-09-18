@@ -3,7 +3,7 @@ import { DepthField } from "../components/depth-field";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Aevra — Campaign Intelligence",
+  title: "VAE — Campaign Intelligence",
   description:
     "Approved brand knowledge in. Evidence-backed, human-approved campaigns out. Nothing publishes without a person saying yes.",
   icons: { icon: "/favicon.svg" },

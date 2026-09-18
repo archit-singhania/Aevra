@@ -3,6 +3,27 @@
 This runbook separates deployable code from approvals and infrastructure that
 cannot be completed from the repository.
 
+## Current free staging endpoints
+
+The current free deployment uses Vercel for the web UI and Render for the API:
+
+```text
+Web: https://vae-web.vercel.app
+API: https://vae-api.onrender.com
+```
+
+On the Render API service, keep the free baseline enabled:
+
+```ini
+AEVRA_ENABLE_CELERY=0
+AEVRA_STORAGE_BACKEND=local
+AEVRA_IMAGE_PROVIDER=deterministic
+```
+
+This baseline does not require a paid worker, GPU provider, hosted object
+store, or external monitoring subscription. Local/container media is suitable
+for staging only; it is not durable when a free container is restarted.
+
 ## API deployment
 
 Apply migrations before starting the API:
@@ -23,6 +44,29 @@ Set provider client IDs and secrets only on the API service. Set
 `AEVRA_OAUTH_FRONTEND_URL` to the public web origin. The callback path is
 `/api/v1/oauth/{provider}/callback`. Never expose provider secrets or vault
 keys to Vercel/browser variables.
+
+For the current deployment, use:
+
+```ini
+AEVRA_OAUTH_REDIRECT_BASE_URL=https://vae-api.onrender.com
+AEVRA_OAUTH_FRONTEND_URL=https://vae-web.vercel.app
+AEVRA_ALLOWED_ORIGINS=https://vae-web.vercel.app
+```
+
+Provider callback URLs are therefore:
+
+```text
+https://vae-api.onrender.com/api/v1/oauth/facebook/callback
+https://vae-api.onrender.com/api/v1/oauth/instagram/callback
+https://vae-api.onrender.com/api/v1/oauth/threads/callback
+https://vae-api.onrender.com/api/v1/oauth/linkedin/callback
+https://vae-api.onrender.com/api/v1/oauth/youtube/callback
+```
+
+In Vercel, set `AEVRA_API_ORIGIN=https://vae-api.onrender.com` and keep
+`NEXT_PUBLIC_API_URL=/api/v1` when using the existing rewrite. Do not put
+provider secrets, access tokens, refresh tokens, or `AEVRA_TOKEN_VAULT_KEY`
+in Vercel variables.
 
 ## Workers
 

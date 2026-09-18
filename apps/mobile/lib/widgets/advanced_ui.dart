@@ -705,7 +705,7 @@ class _OnboardingSheetState extends State<OnboardingSheet> {
   int step = 0;
   static const _steps = [
     _OnboardingStep(
-      'Welcome to Aevra',
+      'Welcome to VAE',
       'Your control room for evidence-backed campaigns, connected live to the workspace.',
     ),
     _OnboardingStep(

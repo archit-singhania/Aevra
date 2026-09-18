@@ -4,6 +4,7 @@ import '../state/app_state.dart';
 import '../theme/aevra_theme.dart';
 import '../widgets/aevra_logo.dart';
 import '../widgets/depth.dart';
+import '../widgets/landing_video.dart';
 import '../widgets/shader_background.dart';
 
 /// The mobile counterpart of the web app's `.live-auth` screen — same
@@ -57,6 +58,10 @@ class _AuthScreenState extends State<AuthScreen> {
       body: Stack(
         children: [
           const Positioned.fill(child: RepaintBoundary(child: ShaderBackground())),
+          // The original MOV artwork is optional and never blocks the first
+          // frame. LandingVideo fades in only after local codec support is
+          // confirmed; ShaderBackground remains the free fallback.
+          const Positioned.fill(child: LandingVideo()),
           SafeArea(
             child: AnimatedBuilder(
               animation: widget.state,

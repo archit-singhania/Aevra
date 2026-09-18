@@ -147,7 +147,7 @@ class AevraWordmark extends StatelessWidget {
         AevraMark(size: markSize, color: markColor),
         SizedBox(width: markSize * 0.42),
         Text(
-          'AEVRA',
+          'VAE',
           style: GoogleFonts.playfairDisplay(
             fontSize: fontSize,
             fontWeight: FontWeight.w600,

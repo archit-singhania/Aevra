@@ -12,6 +12,8 @@ dependencies:
   http: ^1.2.2
   flutter_secure_storage: ^9.2.2
   shared_preferences: ^2.3.3
+  # Open-source local playback; no hosted video service or paid provider.
+  video_player: ^2.9.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -28,6 +30,7 @@ flutter:
     - shaders/background.frag
   assets:
     - assets/branding/
+    - assets/video/
 
 flutter_launcher_icons:
   android: true
