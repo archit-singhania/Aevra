@@ -5023,9 +5023,9 @@ html[data-theme="light"] .confirm-dialog > p:not(.live-kicker) {
 }
 .live-payment-card {
   display: grid;
-  gap: 10px;
-  margin: 16px 0;
-  padding: 16px;
+  gap: 12px;
+  margin: 0;
+  padding: 20px;
   border: 1px solid var(--line-strong);
   border-radius: 18px;
   background: color-mix(in srgb, var(--panel) 88%, transparent);
@@ -5039,11 +5039,81 @@ html[data-theme="light"] .confirm-dialog > p:not(.live-kicker) {
   overflow-wrap: anywhere;
 }
 .live-payment-qr {
-  width: 150px;
-  height: 150px;
+  width: min(220px, 100%);
+  height: auto;
+  aspect-ratio: 1;
   object-fit: contain;
   margin: 0 auto;
   border-radius: 12px;
   background: #fff;
   padding: 8px;
+}
+.live-payment-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.live-payment-details strong {
+  font-size: 16px;
+}
+.live-payment-pending {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+.live-payment-pending p {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.live-status-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 75%, transparent);
+  animation: orb-pulse 1.8s ease-in-out infinite;
+}
+.live-payment-success {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px 4px 8px;
+  text-align: center;
+}
+.live-payment-success > span {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  color: #172018;
+  background: var(--accent);
+  box-shadow: 0 0 34px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.live-payment-success h2,
+.live-payment-success p {
+  margin: 0;
+}
+.live-payment-success .live-full-button {
+  margin-top: 8px;
+}
+@media (max-width: 560px) {
+  .live-payment-card {
+    padding: 16px;
+  }
+  .live-payment-qr {
+    width: min(200px, 82vw);
+  }
+  .live-payment-details {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

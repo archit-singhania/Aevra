@@ -272,6 +272,15 @@ export const api = {
         body: JSON.stringify(payload),
       },
     ),
+  paymentStatusPublic: (onboardingToken: string) =>
+    request<{ status: string; admin_note: string | null; submitted_at: string | null }>(
+      "/auth/onboarding/payment-status/public",
+      undefined,
+      {
+        method: "POST",
+        body: JSON.stringify({ onboarding_token: onboardingToken }),
+      },
+    ),
   submitPaymentProof: async (token: string, utr: string, note: string, file: File) => {
     const form = new FormData();
     form.append("onboarding_token", token);

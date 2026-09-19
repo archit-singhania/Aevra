@@ -79,7 +79,7 @@ import {
   TreemapChart,
   WaterfallChart,
 } from "@/components/charts";
-import { Parallax, Reveal3D } from "@/components/depth";
+import { Reveal3D } from "@/components/depth";
 import { Button } from "@/components/ui/button";
 import {
   api,
@@ -241,6 +241,10 @@ export function LiveWorkspace() {
   const [paymentUtr, setPaymentUtr] = useState("");
   const [paymentNote, setPaymentNote] = useState("");
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<{
+    status: string;
+    admin_note: string | null;
+  } | null>(null);
   const [paymentSubmissions, setPaymentSubmissions] = useState<PaymentSubmission[]>([]);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof window === "undefined") return "dark";
@@ -252,10 +256,7 @@ export function LiveWorkspace() {
   const [scrolled, setScrolled] = useState(false);
   const [metricOrder, setMetricOrder] = useState(["sources", "campaigns", "approval", "assets"]);
   const [dragMetric, setDragMetric] = useState<string | null>(null);
-  // The dashboard scrolls inside `.live-content`, not the window (see the
-  // "Viewport-first shell" rule in globals.css) — Parallax needs this ref
-  // as its scroll container or it silently tracks window scroll, which
-  // never moves here.
+  // The dashboard scrolls inside `.live-content`, not the window.
   const contentRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     // Each sidebar destination starts at its heading, including a return to
@@ -386,6 +387,20 @@ export function LiveWorkspace() {
     if (token) void load(token);
   }, [token, load]);
   useEffect(() => {
+    if (!onboarding || !paymentStatus || paymentStatus.status === "approved") return;
+    const refreshStatus = async () => {
+      try {
+        const result = await api.paymentStatusPublic(onboarding.token);
+        setPaymentStatus({ status: result.status, admin_note: result.admin_note });
+      } catch {
+        // A temporary network failure must not discard the registration flow.
+      }
+    };
+    const timer = window.setInterval(() => void refreshStatus(), 5000);
+    void refreshStatus();
+    return () => window.clearInterval(timer);
+  }, [onboarding, paymentStatus]);
+  useEffect(() => {
     if (token && workspace && selected)
       void api
         .variants(token, workspace.id, selected)
@@ -465,6 +480,7 @@ export function LiveWorkspace() {
         if (result.onboarding_token) {
           setOnboarding({ token: result.onboarding_token, email });
           setPaymentInfo(await api.paymentInstructions());
+          setPaymentStatus({ status: result.account_status, admin_note: null });
           setError(null);
         } else {
           setError("Account created. Complete payment verification before signing in.");
@@ -482,26 +498,27 @@ export function LiveWorkspace() {
   };
   const submitPayment = async (event?: FormEvent) => {
     event?.preventDefault();
-    if (!onboarding || !paymentUtr.trim()) return;
+    if (!onboarding || (!paymentUtr.trim() && !paymentProof)) return;
     setBusy("auth");
+    setError(null);
     try {
+      let result: { status: string; admin_note?: string | null };
       if (paymentProof) {
-        await api.submitPaymentProof(
+        result = await api.submitPaymentProof(
           onboarding.token,
           paymentUtr.trim(),
           paymentNote.trim(),
           paymentProof,
         );
       } else {
-        await api.submitPaymentPublic({
+        result = await api.submitPaymentPublic({
           onboarding_token: onboarding.token,
           utr_reference: paymentUtr.trim(),
           note: paymentNote.trim() || undefined,
         });
       }
-      setError("Payment submitted for manual verification. You can sign in after approval.");
-      setOnboarding(null);
-      setMode("login");
+      setPaymentStatus({ status: result.status, admin_note: result.admin_note ?? null });
+      setNotice("Payment submitted. This page will update automatically after review.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Payment submission failed.");
     } finally {
@@ -834,126 +851,198 @@ export function LiveWorkspace() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
           >
-            <div className="live-tabs">
-              <button
-                type="button"
-                className={cn(mode === "login" && "active")}
-                onClick={() => setMode("login")}
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                className={cn(mode === "register" && "active")}
-                onClick={() => setMode("register")}
-              >
-                Get started
-              </button>
-            </div>
-            <h2>{mode === "login" ? "Welcome back" : "Start your VAE workspace"}</h2>
-            {onboarding && paymentInfo && (
+            {onboarding && paymentInfo ? (
               <div className="live-payment-card">
-                <p className="live-kicker">Payment verification</p>
-                <p>Scan with GPay, Paytm, BHIM, or any UPI app.</p>
-                <NextImage
-                  src={paymentInfo.qr_url || "/payments/vae-upi-qr.png"}
-                  alt="VAE UPI payment QR"
-                  className="live-payment-qr"
-                  width={150}
-                  height={150}
-                  unoptimized
-                />
-                <strong>
-                  {paymentInfo.amount} {paymentInfo.currency}
-                </strong>
-                <code>
-                  {paymentInfo.upi_id || "UPI ID will be configured by the administrator"}
-                </code>
-                <input
-                  value={paymentUtr}
-                  onChange={(event) => setPaymentUtr(event.target.value)}
-                  placeholder="UTR / transaction reference"
-                />
-                <input
-                  value={paymentNote}
-                  onChange={(event) => setPaymentNote(event.target.value)}
-                  placeholder="Optional payment note"
-                />
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => setPaymentProof(event.target.files?.[0] ?? null)}
-                />
-                <Button
-                  type="button"
-                  className="live-full-button"
-                  disabled={busy === "auth" || (!paymentUtr.trim() && !paymentProof)}
-                  onClick={() => void submitPayment()}
-                >
-                  Submit payment proof
-                </Button>
+                {paymentStatus?.status === "approved" ? (
+                  <motion.div
+                    className="live-payment-success"
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
+                    <span>
+                      <Check size={26} />
+                    </span>
+                    <p className="live-kicker">Payment approved</p>
+                    <h2>Your VAE workspace is ready.</h2>
+                    <p>Your payment has been verified. You can now sign in to your account.</p>
+                    <Button
+                      type="button"
+                      className="live-full-button"
+                      onClick={() => {
+                        setOnboarding(null);
+                        setPaymentInfo(null);
+                        setPaymentStatus(null);
+                        setPaymentUtr("");
+                        setPaymentNote("");
+                        setPaymentProof(null);
+                        setMode("login");
+                        setNotice("Payment approved. Sign in to enter your workspace.");
+                      }}
+                    >
+                      <ArrowRight size={15} /> Continue to sign in
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <>
+                    <p className="live-kicker">Payment verification</p>
+                    <h2>Complete your registration</h2>
+                    <p>Scan with GPay, Paytm, BHIM, or any UPI app.</p>
+                    <NextImage
+                      src={paymentInfo.qr_url || "/payments/vae-upi-qr.png"}
+                      alt="VAE UPI payment QR"
+                      className="live-payment-qr"
+                      width={220}
+                      height={220}
+                      unoptimized
+                      priority
+                    />
+                    <div className="live-payment-details">
+                      <strong>
+                        {paymentInfo.amount} {paymentInfo.currency}
+                      </strong>
+                      <code>
+                        {paymentInfo.upi_id || "UPI ID will be configured by the administrator"}
+                      </code>
+                    </div>
+                    {paymentStatus?.status === "under_review" ? (
+                      <div className="live-payment-pending" role="status">
+                        <span className="live-status-dot" />
+                        <div>
+                          <strong>Verification in progress</strong>
+                          <p>
+                            Keep this page open. It will update automatically when the administrator
+                            completes the review.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {paymentStatus?.status === "rejected" && (
+                          <div className="live-alert error">
+                            <CircleAlert size={15} />
+                            {paymentStatus.admin_note ||
+                              "The payment could not be verified. Submit updated proof."}
+                          </div>
+                        )}
+                        <input
+                          value={paymentUtr}
+                          onChange={(event) => setPaymentUtr(event.target.value)}
+                          placeholder="UTR / transaction reference"
+                        />
+                        <input
+                          value={paymentNote}
+                          onChange={(event) => setPaymentNote(event.target.value)}
+                          placeholder="Optional payment note"
+                        />
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(event) => setPaymentProof(event.target.files?.[0] ?? null)}
+                        />
+                        <Button
+                          type="button"
+                          className="live-full-button"
+                          disabled={busy === "auth" || (!paymentUtr.trim() && !paymentProof)}
+                          onClick={() => void submitPayment()}
+                        >
+                          Submit payment proof
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
+            ) : (
+              <>
+                <div className="live-tabs">
+                  <button
+                    type="button"
+                    className={cn(mode === "login" && "active")}
+                    onClick={() => setMode("login")}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(mode === "register" && "active")}
+                    onClick={() => setMode("register")}
+                  >
+                    Get started
+                  </button>
+                </div>
+                <h2>{mode === "login" ? "Welcome back" : "Start your VAE workspace"}</h2>
+                {notice && mode === "login" && (
+                  <div className="live-alert success">
+                    <Check size={15} /> {notice}
+                  </div>
+                )}
+                {error && (
+                  <div className="live-alert error">
+                    <CircleAlert size={15} /> {error}
+                  </div>
+                )}
+                {mode === "register" && (
+                  <>
+                    <Field label="Your name">
+                      <input
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Jane Smith"
+                      />
+                    </Field>
+                    <Field label="Organization">
+                      <input
+                        required
+                        value={org}
+                        onChange={(e) => setOrg(e.target.value)}
+                        placeholder="VAE Studio"
+                      />
+                    </Field>
+                    <Field label="Workspace">
+                      <input
+                        required
+                        value={workspaceName}
+                        onChange={(e) => setWorkspaceName(e.target.value)}
+                        placeholder="Marketing"
+                      />
+                    </Field>
+                  </>
+                )}
+                <Field label="Email">
+                  <input
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@company.com"
+                  />
+                </Field>
+                <Field label="Password">
+                  <input
+                    required
+                    type="password"
+                    minLength={1}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Your password"
+                  />
+                </Field>
+                <Button type="submit" className="live-full-button" disabled={busy === "auth"}>
+                  <ArrowRight className={cn(busy === "auth" && "live-spin")} size={15} />
+                  {busy === "auth"
+                    ? "Opening workspace…"
+                    : mode === "login"
+                      ? "Enter workspace"
+                      : "Get started"}
+                </Button>
+              </>
             )}
-            {error && (
+            {onboarding && error && (
               <div className="live-alert error">
                 <CircleAlert size={15} /> {error}
               </div>
             )}
-            {mode === "register" && (
-              <>
-                <Field label="Your name">
-                  <input
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Jane Smith"
-                  />
-                </Field>
-                <Field label="Organization">
-                  <input
-                    required
-                    value={org}
-                    onChange={(e) => setOrg(e.target.value)}
-                    placeholder="VAE Studio"
-                  />
-                </Field>
-                <Field label="Workspace">
-                  <input
-                    required
-                    value={workspaceName}
-                    onChange={(e) => setWorkspaceName(e.target.value)}
-                    placeholder="Marketing"
-                  />
-                </Field>
-              </>
-            )}
-            <Field label="Email">
-              <input
-                required
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-              />
-            </Field>
-            <Field label="Password">
-              <input
-                required
-                type="password"
-                minLength={1}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Your password"
-              />
-            </Field>
-            <Button type="submit" className="live-full-button" disabled={busy === "auth"}>
-              <ArrowRight className={cn(busy === "auth" && "live-spin")} size={15} />
-              {busy === "auth"
-                ? "Opening workspace…"
-                : mode === "login"
-                  ? "Enter workspace"
-                  : "Get started free"}
-            </Button>
           </motion.form>
         </main>
       </MotionConfig>
@@ -974,9 +1063,7 @@ export function LiveWorkspace() {
         <ParticleField pulse={pulse} />
         <div>
           <p className="live-kicker">Live workspace</p>
-          <Parallax depth={-1.2} containerRef={contentRef}>
-            <h1>Good to see you, {user?.display_name?.split(" ")[0] ?? "there"}.</h1>
-          </Parallax>
+          <h1>Good to see you, {user?.display_name?.split(" ")[0] ?? "there"}.</h1>
           <p>
             <TypewriterText text="Your VAE control room is connected to the FastAPI workspace." />
           </p>

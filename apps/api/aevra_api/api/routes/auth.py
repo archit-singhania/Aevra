@@ -13,6 +13,7 @@ from aevra_api.schemas.tenancy import (
     AccountDeletionResponse,
     AdminPaymentResponse,
     LoginRequest,
+    OnboardingStatusRequest,
     OrganizationResponse,
     PaymentInstructionsResponse,
     PaymentReviewRequest,
@@ -206,6 +207,31 @@ def submit_payment_public(
     user.account_status = "under_review"
     session.commit()
     return PaymentStatusResponse(status=item.status, submitted_at=item.updated_at)
+
+
+@router.post("/onboarding/payment-status/public", response_model=PaymentStatusResponse)
+def payment_status_public(
+    request: OnboardingStatusRequest,
+    session: SessionDep,
+    settings: SettingsDep,
+) -> PaymentStatusResponse:
+    """Let a registrant observe manual review without creating a login session."""
+    user_id = decode_onboarding_token(request.onboarding_token, settings)
+    user = session.get(User, user_id)
+    if user is None or user.is_admin:
+        raise ConflictError("Payment status is unavailable for this account")
+    item = session.scalar(
+        select(PaymentSubmission)
+        .where(PaymentSubmission.user_id == user.id)
+        .order_by(PaymentSubmission.created_at.desc())
+    )
+    if item is None:
+        raise ConflictError("No payment request exists for this account")
+    return PaymentStatusResponse(
+        status=item.status,
+        admin_note=item.admin_note,
+        submitted_at=item.updated_at,
+    )
 
 
 @router.post("/onboarding/payment-submissions/public/proof", response_model=PaymentStatusResponse)

@@ -93,6 +93,10 @@ class PaymentSubmissionRequest(BaseModel):
     note: str | None = Field(default=None, max_length=1000)
 
 
+class OnboardingStatusRequest(BaseModel):
+    onboarding_token: str = Field(min_length=1)
+
+
 class PaymentStatusResponse(BaseModel):
     status: str
     admin_note: str | None = None
