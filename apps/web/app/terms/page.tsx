@@ -28,12 +28,12 @@ export default function TermsPage() {
         </p>
         <h2>Availability</h2>
         <p>
-          Staging providers and deterministic generation are provided for evaluation; production
+          Providers and deterministic generation are provided for evaluation; production
           availability requires an approved deployment plan.
         </p>
       </GlassPane>
       <p className="legal-muted">
-        Have counsel review and replace this staging policy before public launch.
+        Have counsel review and replace this policy before public launch.
       </p>
     </main>
   );

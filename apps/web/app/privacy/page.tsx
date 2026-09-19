@@ -32,7 +32,7 @@ export default function PrivacyPage() {
         </p>
       </GlassPane>
       <p className="legal-muted">
-        Replace this staging policy with reviewed jurisdiction-specific language before public
+        This policy should be reviewed for the jurisdictions in which VAE operates before public
         launch.
       </p>
     </main>

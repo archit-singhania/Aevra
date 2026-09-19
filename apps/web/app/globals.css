@@ -4890,3 +4890,71 @@ html[data-theme="light"] .sound-toggle,
 html[data-theme="light"] .live-theme-toggle {
   background: rgba(255, 255, 255, 0.72);
 }
+
+.confirm-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 5, 7, 0.62);
+  backdrop-filter: blur(14px);
+}
+.confirm-dialog {
+  position: relative;
+  width: min(100%, 430px);
+  padding: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+}
+.confirm-dialog h2 {
+  margin: 7px 0 10px;
+  color: var(--text);
+}
+.confirm-dialog > p:not(.live-kicker) {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.confirm-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: 180ms ease;
+}
+.confirm-close:hover {
+  color: var(--text);
+  background: rgba(var(--glass-sheen), 0.08);
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+html[data-theme="light"] .confirm-layer {
+  background: rgba(25, 31, 29, 0.28);
+}
+html[data-theme="light"] .confirm-dialog {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: #b7c4bd;
+  box-shadow: 0 24px 70px rgba(32, 48, 40, 0.2);
+}
+html[data-theme="light"] .confirm-dialog h2 {
+  color: #16221d;
+}
+html[data-theme="light"] .confirm-dialog > p:not(.live-kicker) {
+  color: #475750;
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' show ImageFilter;
 import 'screens/analytics_screen.dart';
 import 'screens/auth_screen.dart';
@@ -33,6 +34,15 @@ class _AevraAppState extends State<AevraApp> {
     state = AppState();
     state.hydrate();
     sound.hydrate();
+    SharedPreferences.getInstance().then((prefs) {
+      if (mounted) setState(() => darkMode = prefs.getBool('vae.dark-mode') ?? true);
+    });
+  }
+
+  void _toggleTheme() {
+    final next = !darkMode;
+    setState(() => darkMode = next);
+    SharedPreferences.getInstance().then((prefs) => prefs.setBool('vae.dark-mode', next));
   }
 
   @override
@@ -72,7 +82,7 @@ class _AevraAppState extends State<AevraApp> {
                     sound: sound,
                     pulse: pulse,
                     darkMode: darkMode,
-                    onToggleTheme: () => setState(() => darkMode = !darkMode),
+                    onToggleTheme: _toggleTheme,
                   )
                 : AuthScreen(key: const ValueKey('auth'), state: state),
           );
@@ -275,6 +285,39 @@ class _MobileShellState extends State<MobileShell> {
     setState(() => index = next);
   }
 
+  Future<void> _confirmSignOut() async {
+    widget.sound.tap();
+    final confirmed = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Sign out',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (dialogContext, _, __) => AlertDialog(
+        title: const Text('Sign out of VAE?'),
+        content: const Text('Your workspace is safe. You can sign back in at any time.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.logout_outlined),
+            label: const Text('Sign out'),
+          ),
+        ],
+      ),
+      transitionBuilder: (context, animation, _, child) => FadeTransition(
+        opacity: CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: .96, end: 1).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          child: child,
+        ),
+      ),
+    );
+    if (confirmed == true && mounted) await widget.state.signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -303,6 +346,7 @@ class _MobileShellState extends State<MobileShell> {
                   themeButtonKey: _themeButtonKey,
                   onToggleTheme: _toggleThemeWithWipe,
                   onOpenPalette: _openCommandPalette,
+                  onSignOut: _confirmSignOut,
                 ),
                 Expanded(
                   child: AnimatedSwitcher(
@@ -371,6 +415,7 @@ class _TopBar extends StatelessWidget {
     required this.themeButtonKey,
     required this.onToggleTheme,
     required this.onOpenPalette,
+    required this.onSignOut,
   });
 
   final String title;
@@ -380,6 +425,7 @@ class _TopBar extends StatelessWidget {
   final GlobalKey themeButtonKey;
   final VoidCallback onToggleTheme;
   final VoidCallback onOpenPalette;
+  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
@@ -428,10 +474,7 @@ class _TopBar extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Sign out',
-            onPressed: () {
-              sound.tap();
-              state.signOut();
-            },
+            onPressed: onSignOut,
             icon: const Icon(Icons.logout_outlined, size: 20),
             color: AevraColors.muted,
           ),

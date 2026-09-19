@@ -226,6 +226,8 @@ export function LiveWorkspace() {
   const [scheduleAt, setScheduleAt] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof window === "undefined") return "dark";
     return window.localStorage.getItem("vae.theme") === "light" ? "light" : "dark";
@@ -402,6 +404,7 @@ export function LiveWorkspace() {
       if (event.key === "Escape") {
         setPaletteOpen(false);
         setTourOpen(false);
+        setSignOutOpen(false);
       }
     };
     const onScroll = () => setScrolled((contentRef.current?.scrollTop ?? 0) > 24);
@@ -601,7 +604,7 @@ export function LiveWorkspace() {
       });
       setAccounts((items) => [account, ...items]);
       setPublishAccount(account.id);
-      setNotice("Staging publishing account connected.");
+      setNotice("Publishing account connected.");
     });
   };
   const startOAuth = async (
@@ -806,7 +809,7 @@ export function LiveWorkspace() {
       <Reveal className="live-hero live-glow" onMouseMove={handleGlow}>
         <ParticleField pulse={pulse} />
         <div>
-          <p className="live-kicker">Live staging workspace</p>
+          <p className="live-kicker">Live workspace</p>
           <Parallax depth={-1.2} containerRef={contentRef}>
             <h1>Good to see you, {user?.display_name?.split(" ")[0] ?? "there"}.</h1>
           </Parallax>
@@ -1316,11 +1319,11 @@ export function LiveWorkspace() {
     <div className="live-columns">
       <section className="live-panel">
         <Reveal3D>
-          <p className="live-kicker">Staging connector</p>
+          <p className="live-kicker">Channel connector</p>
           <h2>Connect publisher</h2>
         </Reveal3D>
         <p className="live-helper">
-          OAuth approval remains a production step; this creates a safely referenced staging
+          OAuth approval remains required before public publishing; this creates a safely referenced
           account.
         </p>
         <fieldset className="oauth-connect-grid">
@@ -1375,7 +1378,7 @@ export function LiveWorkspace() {
             />
           </Field>
           <Button type="submit" disabled={busy === "connect"}>
-            <Plus size={14} /> Connect staging account
+            <Plus size={14} /> Connect account
           </Button>
         </form>
         {accounts.map((account) => (
@@ -1841,6 +1844,69 @@ export function LiveWorkspace() {
             }}
           />
         )}
+        <AnimatePresence>
+          {signOutOpen && (
+            <motion.div
+              className="confirm-layer"
+              role="presentation"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onMouseDown={() => !signingOut && setSignOutOpen(false)}
+            >
+              <motion.div
+                className="confirm-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="sign-out-title"
+                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <button
+                  className="confirm-close"
+                  type="button"
+                  aria-label="Close sign out dialog"
+                  disabled={signingOut}
+                  onClick={() => setSignOutOpen(false)}
+                >
+                  <X size={16} />
+                </button>
+                <p className="live-kicker">Account</p>
+                <h2 id="sign-out-title">Sign out of VAE?</h2>
+                <p>Your workspace is safe. You can return and sign in again at any time.</p>
+                <div className="confirm-actions">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={signingOut}
+                    onClick={() => setSignOutOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={signingOut}
+                    onClick={async () => {
+                      setSigningOut(true);
+                      try {
+                        await api.logout();
+                      } finally {
+                        reset();
+                        setSigningOut(false);
+                        setSignOutOpen(false);
+                      }
+                    }}
+                  >
+                    <LogOut size={15} /> {signingOut ? "Signing out…" : "Sign out"}
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <aside className={cn("live-sidebar", sidebar && "open")}>
           <div className="live-logo">
             <span />
@@ -1879,11 +1945,7 @@ export function LiveWorkspace() {
                 <small>{user?.email}</small>
               </span>
             </div>
-            <button
-              onClick={() => {
-                void api.logout().finally(reset);
-              }}
-            >
+            <button onClick={() => setSignOutOpen(true)}>
               <LogOut size={15} /> Sign out
             </button>
           </div>
@@ -1901,7 +1963,7 @@ export function LiveWorkspace() {
               <Menu size={19} />
             </button>
             <span>
-              <i /> Staging environment
+              <i /> Workspace online
             </span>
             <div>
               <button className="live-command-trigger" onClick={() => setPaletteOpen(true)}>
