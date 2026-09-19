@@ -67,17 +67,21 @@ class CampaignService:
             # brands remain valid, while new tenants can create campaigns
             # without first entering an internal configuration screen.
             existing_brands = self.brand_repository.list_brands_for_user(user_id, workspace_id)
-            brand = existing_brands[0] if existing_brands else BrandProfile(
-                workspace_id=workspace_id,
-                name="VAE default",
-                slug="vae-default",
-                description="Default VAE campaign intelligence configuration.",
-                industry="AI software",
-                tone_attributes=["clear", "strategic", "evidence-led"],
-                target_audiences=[],
-                preferred_ctas=["Learn more"],
-                preferred_hashtags=[],
-                status="active",
+            brand = (
+                existing_brands[0]
+                if existing_brands
+                else BrandProfile(
+                    workspace_id=workspace_id,
+                    name="VAE default",
+                    slug="vae-default",
+                    description="Default VAE campaign intelligence configuration.",
+                    industry="AI software",
+                    tone_attributes=["clear", "strategic", "evidence-led"],
+                    target_audiences=[],
+                    preferred_ctas=["Learn more"],
+                    preferred_hashtags=[],
+                    status="active",
+                )
             )
             if brand.id is None:
                 self.brand_repository.add_brand(brand)

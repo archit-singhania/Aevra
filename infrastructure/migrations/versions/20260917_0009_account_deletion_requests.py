@@ -26,12 +26,19 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.CheckConstraint("status IN ('requested', 'processing', 'completed', 'cancelled')", name="valid_account_deletion_status"),
+        sa.CheckConstraint(
+            "status IN ('requested', 'processing', 'completed', 'cancelled')",
+            name="valid_account_deletion_status",
+        ),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("user_id", "status", name="uq_active_account_deletion_request"),
+        sa.UniqueConstraint(
+            "user_id", "status", name="uq_active_account_deletion_request"
+        ),
     )
-    op.create_index("ix_account_deletion_requests_user_id", "account_deletion_requests", ["user_id"])
+    op.create_index(
+        "ix_account_deletion_requests_user_id", "account_deletion_requests", ["user_id"]
+    )
 
 
 def downgrade() -> None:

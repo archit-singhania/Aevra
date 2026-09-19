@@ -39,16 +39,33 @@ def upgrade() -> None:
             "status IN ('connected', 'paused', 'revoked')",
             name=op.f("ck_social_accounts_valid_social_account_status"),
         ),
-        sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["created_by_user_id"], ["users.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"], ["workspaces.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"], ["users.id"], ondelete="RESTRICT"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
-            "workspace_id", "platform", "external_account_id", name="uq_social_account_identity"
+            "workspace_id",
+            "platform",
+            "external_account_id",
+            name="uq_social_account_identity",
         ),
     )
-    op.create_index("ix_social_accounts_workspace_id", "social_accounts", ["workspace_id"])
-    op.create_index("ix_social_accounts_created_by_user_id", "social_accounts", ["created_by_user_id"])
-    op.create_index("ix_social_accounts_workspace_platform", "social_accounts", ["workspace_id", "platform"])
+    op.create_index(
+        "ix_social_accounts_workspace_id", "social_accounts", ["workspace_id"]
+    )
+    op.create_index(
+        "ix_social_accounts_created_by_user_id",
+        "social_accounts",
+        ["created_by_user_id"],
+    )
+    op.create_index(
+        "ix_social_accounts_workspace_platform",
+        "social_accounts",
+        ["workspace_id", "platform"],
+    )
 
     op.create_table(
         "publish_jobs",
@@ -78,16 +95,37 @@ def upgrade() -> None:
             ["campaigns.id", "campaigns.workspace_id"],
             ondelete="CASCADE",
         ),
-        sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["social_account_id"], ["social_accounts.id"], ondelete="RESTRICT"),
-        sa.ForeignKeyConstraint(["created_by_user_id"], ["users.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"], ["workspaces.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["social_account_id"], ["social_accounts.id"], ondelete="RESTRICT"
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"], ["users.id"], ondelete="RESTRICT"
+        ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("workspace_id", "idempotency_key", name="uq_publish_job_idempotency"),
+        sa.UniqueConstraint(
+            "workspace_id", "idempotency_key", name="uq_publish_job_idempotency"
+        ),
     )
-    for column in ("workspace_id", "campaign_id", "social_account_id", "created_by_user_id"):
+    for column in (
+        "workspace_id",
+        "campaign_id",
+        "social_account_id",
+        "created_by_user_id",
+    ):
         op.create_index(op.f(f"ix_publish_jobs_{column}"), "publish_jobs", [column])
-    op.create_index("ix_publish_jobs_workspace_created", "publish_jobs", ["workspace_id", "created_at"])
-    op.create_index("ix_publish_jobs_workspace_campaign", "publish_jobs", ["workspace_id", "campaign_id"])
+    op.create_index(
+        "ix_publish_jobs_workspace_created",
+        "publish_jobs",
+        ["workspace_id", "created_at"],
+    )
+    op.create_index(
+        "ix_publish_jobs_workspace_campaign",
+        "publish_jobs",
+        ["workspace_id", "campaign_id"],
+    )
 
 
 def downgrade() -> None:

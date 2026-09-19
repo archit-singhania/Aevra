@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import io
 import hashlib
-import mimetypes
+import io
 import tempfile
 import uuid
 from typing import Any, Literal, cast
@@ -112,7 +111,13 @@ class MediaService:
         self._require_editor(user_id, workspace_id)
         campaign = self._campaign(user_id, workspace_id, campaign_id) if campaign_id else None
         normalized_type = content_type.lower().split(";", 1)[0]
-        if normalized_type not in {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime"}:
+        if normalized_type not in {
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "video/mp4",
+            "video/quicktime",
+        }:
             raise GenerationError("Only JPEG, PNG, WebP, MP4, and MOV uploads are supported.")
         if not content:
             raise GenerationError("The uploaded file is empty.")
@@ -154,7 +159,11 @@ class MediaService:
         return asset
 
     def attach_asset(
-        self, user_id: uuid.UUID, workspace_id: uuid.UUID, asset_id: uuid.UUID, request: MediaAttachRequest
+        self,
+        user_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        asset_id: uuid.UUID,
+        request: MediaAttachRequest,
     ) -> MediaAsset:
         self._require_editor(user_id, workspace_id)
         asset = self.repository.get_for_user(user_id, workspace_id, asset_id)

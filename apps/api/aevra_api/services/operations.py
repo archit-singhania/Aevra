@@ -10,7 +10,11 @@ from aevra_api.domain.errors import ConflictError, ForbiddenError, NotFoundError
 from aevra_api.repositories.operations import OperationsRepository
 from aevra_api.repositories.publishing import PublishingRepository
 from aevra_api.repositories.tenancy import TenancyRepository
-from aevra_api.schemas.operations import MetricsCreateRequest, ScheduleCreateRequest, ScheduleRescheduleRequest
+from aevra_api.schemas.operations import (
+    MetricsCreateRequest,
+    ScheduleCreateRequest,
+    ScheduleRescheduleRequest,
+)
 
 EDIT_ROLES = {"owner", "admin", "member"}
 
@@ -78,9 +82,15 @@ class OperationsService:
         self._access(user_id, workspace_id)
         return self.repo.scheduled(user_id, workspace_id)
 
-    def cancel(self, user_id: uuid.UUID, workspace_id: uuid.UUID, post_id: uuid.UUID) -> ScheduledPost:
+    def cancel(
+        self, user_id: uuid.UUID, workspace_id: uuid.UUID, post_id: uuid.UUID
+    ) -> ScheduledPost:
         self._editor(user_id, workspace_id)
-        item = self.session.query(ScheduledPost).filter_by(id=post_id, workspace_id=workspace_id).first()
+        item = (
+            self.session.query(ScheduledPost)
+            .filter_by(id=post_id, workspace_id=workspace_id)
+            .first()
+        )
         if item is None:
             raise NotFoundError("Scheduled post not found")
         if item.status not in {"scheduled", "failed"}:
@@ -109,7 +119,11 @@ class OperationsService:
         self._editor(user_id, workspace_id)
         if request.scheduled_for <= datetime.now(UTC):
             raise ConflictError("scheduled_for must be in the future")
-        item = self.session.query(ScheduledPost).filter_by(id=post_id, workspace_id=workspace_id).first()
+        item = (
+            self.session.query(ScheduledPost)
+            .filter_by(id=post_id, workspace_id=workspace_id)
+            .first()
+        )
         if item is None:
             raise NotFoundError("Scheduled post not found")
         if item.status not in {"scheduled", "failed"}:
@@ -130,9 +144,15 @@ class OperationsService:
         self.session.commit()
         return item
 
-    def retry(self, user_id: uuid.UUID, workspace_id: uuid.UUID, post_id: uuid.UUID) -> ScheduledPost:
+    def retry(
+        self, user_id: uuid.UUID, workspace_id: uuid.UUID, post_id: uuid.UUID
+    ) -> ScheduledPost:
         self._editor(user_id, workspace_id)
-        item = self.session.query(ScheduledPost).filter_by(id=post_id, workspace_id=workspace_id).first()
+        item = (
+            self.session.query(ScheduledPost)
+            .filter_by(id=post_id, workspace_id=workspace_id)
+            .first()
+        )
         if item is None:
             raise NotFoundError("Scheduled post not found")
         if item.status != "failed":

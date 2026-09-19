@@ -8,8 +8,9 @@ Set these on the API service only. Never commit real values:
 
 ```ini
 AEVRA_ADMIN_EMAIL=admin@example.com
-AEVRA_ADMIN_PASSWORD=<strong-password>
+AEVRA_ADMIN_PASSWORD=<unique-password-at-least-8-characters>
 AEVRA_ADMIN_DISPLAY_NAME=VAE Admin
+AEVRA_MANUAL_PAYMENT_APPROVAL_ENABLED=1
 AEVRA_PAYMENT_AMOUNT=<amount>
 AEVRA_PAYMENT_CURRENCY=INR
 AEVRA_PAYMENT_UPI_ID=<upi-id>
@@ -41,3 +42,9 @@ The migration creates account approval fields and `payment_submissions`. Take a 
 7. Repeat with Reject and confirm the user remains blocked and sees the review state.
 
 Approval is deliberately manual. A screenshot or UTR is evidence only; the administrator must verify the payment in the UPI portal.
+
+For public production, replace simple test values such as `password` with a generated password of at least 16 characters even though the staging validator permits eight.
+
+The container startup command applies migrations and idempotently reconciles the single administrator from these variables. Changing `AEVRA_ADMIN_PASSWORD` in Render therefore changes the administrator password on the next successful deploy.
+
+Keep `AEVRA_MANUAL_PAYMENT_APPROVAL_ENABLED=1` on Render. Setting it to `0` intentionally bypasses payment review and is reserved for local automated tests or a future free-access deployment.

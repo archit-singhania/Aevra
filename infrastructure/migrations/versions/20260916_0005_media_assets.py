@@ -57,9 +57,17 @@ def upgrade() -> None:
             "platform IS NULL OR platform IN ('linkedin', 'instagram', 'threads', 'x', 'facebook', 'youtube')",
             name=op.f("ck_media_assets_valid_media_asset_platform"),
         ),
-        sa.CheckConstraint("bytes_size >= 0", name=op.f("ck_media_assets_valid_media_asset_bytes")),
-        sa.CheckConstraint("width IS NULL OR width > 0", name=op.f("ck_media_assets_valid_media_asset_width")),
-        sa.CheckConstraint("height IS NULL OR height > 0", name=op.f("ck_media_assets_valid_media_asset_height")),
+        sa.CheckConstraint(
+            "bytes_size >= 0", name=op.f("ck_media_assets_valid_media_asset_bytes")
+        ),
+        sa.CheckConstraint(
+            "width IS NULL OR width > 0",
+            name=op.f("ck_media_assets_valid_media_asset_width"),
+        ),
+        sa.CheckConstraint(
+            "height IS NULL OR height > 0",
+            name=op.f("ck_media_assets_valid_media_asset_height"),
+        ),
         sa.CheckConstraint(
             "duration_seconds IS NULL OR duration_seconds >= 0",
             name=op.f("ck_media_assets_valid_media_asset_duration"),
@@ -100,10 +108,14 @@ def upgrade() -> None:
     ):
         op.create_index(op.f(f"ix_media_assets_{column}"), "media_assets", [column])
     op.create_index(
-        "ix_media_assets_workspace_created", "media_assets", ["workspace_id", "created_at"]
+        "ix_media_assets_workspace_created",
+        "media_assets",
+        ["workspace_id", "created_at"],
     )
     op.create_index(
-        "ix_media_assets_workspace_campaign", "media_assets", ["workspace_id", "campaign_id"]
+        "ix_media_assets_workspace_campaign",
+        "media_assets",
+        ["workspace_id", "campaign_id"],
     )
 
 

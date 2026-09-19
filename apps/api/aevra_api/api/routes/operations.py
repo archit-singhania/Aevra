@@ -8,8 +8,8 @@ from aevra_api.schemas.operations import (
     MetricsCreateRequest,
     MetricsResponse,
     ScheduleCreateRequest,
-    ScheduleRescheduleRequest,
     ScheduledPostResponse,
+    ScheduleRescheduleRequest,
 )
 from aevra_api.services.operations import OperationsService
 

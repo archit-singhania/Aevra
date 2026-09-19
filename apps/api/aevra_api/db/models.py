@@ -44,15 +44,20 @@ class PaymentSubmission(TimestampMixin, Base):
     __tablename__ = "payment_submissions"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('pending_payment', 'payment_submitted', 'under_review', 'approved', 'rejected', 'expired')",
+            "status IN ('pending_payment', 'payment_submitted', 'under_review', "
+            "'approved', 'rejected', 'expired')",
             name="valid_payment_submission_status",
         ),
         Index("ix_payment_submissions_status_created", "status", "created_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     amount: Mapped[str] = mapped_column(String(32), default="0")
     currency: Mapped[str] = mapped_column(String(8), default="INR")
     upi_id_snapshot: Mapped[str] = mapped_column(String(320), default="")

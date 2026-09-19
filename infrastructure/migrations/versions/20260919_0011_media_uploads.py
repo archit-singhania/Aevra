@@ -16,8 +16,12 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.alter_column("media_assets", "campaign_id", existing_type=sa.Uuid(), nullable=True)
+    op.alter_column(
+        "media_assets", "campaign_id", existing_type=sa.Uuid(), nullable=True
+    )
 
 
 def downgrade() -> None:
-    op.alter_column("media_assets", "campaign_id", existing_type=sa.Uuid(), nullable=False)
+    op.alter_column(
+        "media_assets", "campaign_id", existing_type=sa.Uuid(), nullable=False
+    )

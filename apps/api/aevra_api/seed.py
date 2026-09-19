@@ -3,6 +3,7 @@ from aevra_api.db.session import SessionLocal
 from aevra_api.repositories.brands import BrandRepository
 from aevra_api.schemas.brands import BrandCreateRequest, BrandRuleCreateRequest
 from aevra_api.schemas.tenancy import RegisterRequest
+from aevra_api.security import hash_password
 from aevra_api.services.brands import BrandService
 from aevra_api.services.tenancy import TenancyService
 
@@ -30,6 +31,16 @@ def seed() -> None:
             session.commit()
             workspace = result.workspace
         else:
+            # The configured administrator is deployment-owned. Reconcile an
+            # existing row on every startup so database restores and changed
+            # Render credentials cannot leave the only administrator locked out.
+            user.display_name = settings.admin_display_name
+            user.password_hash = hash_password(settings.admin_password)
+            user.account_status = "approved"
+            user.payment_required = False
+            user.is_admin = True
+            user.is_active = True
+            session.commit()
             workspaces = service.list_workspaces(user.id)
             if not workspaces:
                 raise RuntimeError("Seed user exists without an accessible workspace")

@@ -36,8 +36,11 @@ class Settings(BaseSettings):
     seed_email: str = "owner@aevra.local"
     seed_password: str = Field(default="AevraLocalOnly!2026", min_length=12)
     admin_email: str = "admin@vae.local"
-    admin_password: str = Field(default="VaeAdminLocalOnly!2026", min_length=12)
+    # Eight characters keeps staging/admin smoke tests usable. Production
+    # deployments should still set a unique, generated password in Render.
+    admin_password: str = Field(default="VaeAdminLocalOnly!2026", min_length=8)
     admin_display_name: str = "VAE Admin"
+    manual_payment_approval_enabled: bool = True
     payment_amount: str = "0"
     payment_currency: str = "INR"
     payment_upi_id: str = ""

@@ -32,17 +32,45 @@ def upgrade() -> None:
         sa.Column("published_job_id", sa.Uuid(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.CheckConstraint("status IN ('scheduled', 'processing', 'published', 'failed', 'cancelled')", name="ck_scheduled_posts_status"),
-        sa.ForeignKeyConstraint(["campaign_id", "workspace_id"], ["campaigns.id", "campaigns.workspace_id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["social_account_id"], ["social_accounts.id"], ondelete="RESTRICT"),
-        sa.ForeignKeyConstraint(["created_by_user_id"], ["users.id"], ondelete="RESTRICT"),
+        sa.CheckConstraint(
+            "status IN ('scheduled', 'processing', 'published', 'failed', 'cancelled')",
+            name="ck_scheduled_posts_status",
+        ),
+        sa.ForeignKeyConstraint(
+            ["campaign_id", "workspace_id"],
+            ["campaigns.id", "campaigns.workspace_id"],
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"], ["workspaces.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["social_account_id"], ["social_accounts.id"], ondelete="RESTRICT"
+        ),
+        sa.ForeignKeyConstraint(
+            ["created_by_user_id"], ["users.id"], ondelete="RESTRICT"
+        ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("workspace_id", "idempotency_key", name="uq_scheduled_post_idempotency"),
+        sa.UniqueConstraint(
+            "workspace_id", "idempotency_key", name="uq_scheduled_post_idempotency"
+        ),
     )
-    for column in ("workspace_id", "campaign_id", "social_account_id", "created_by_user_id", "scheduled_for", "published_job_id"):
-        op.create_index(op.f(f"ix_scheduled_posts_{column}"), "scheduled_posts", [column])
-    op.create_index("ix_scheduled_posts_workspace_due", "scheduled_posts", ["workspace_id", "scheduled_for", "status"])
+    for column in (
+        "workspace_id",
+        "campaign_id",
+        "social_account_id",
+        "created_by_user_id",
+        "scheduled_for",
+        "published_job_id",
+    ):
+        op.create_index(
+            op.f(f"ix_scheduled_posts_{column}"), "scheduled_posts", [column]
+        )
+    op.create_index(
+        "ix_scheduled_posts_workspace_due",
+        "scheduled_posts",
+        ["workspace_id", "scheduled_for", "status"],
+    )
 
     op.create_table(
         "post_metrics",
@@ -62,14 +90,32 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.CheckConstraint("impressions >= 0", name="ck_post_metrics_impressions"),
         sa.CheckConstraint("engagements >= 0", name="ck_post_metrics_engagements"),
-        sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["social_account_id"], ["social_accounts.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"], ["workspaces.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["social_account_id"], ["social_accounts.id"], ondelete="RESTRICT"
+        ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("workspace_id", "external_post_id", "collected_at", name="uq_post_metric_snapshot"),
+        sa.UniqueConstraint(
+            "workspace_id",
+            "external_post_id",
+            "collected_at",
+            name="uq_post_metric_snapshot",
+        ),
     )
-    for column in ("workspace_id", "social_account_id", "external_post_id", "collected_at"):
+    for column in (
+        "workspace_id",
+        "social_account_id",
+        "external_post_id",
+        "collected_at",
+    ):
         op.create_index(op.f(f"ix_post_metrics_{column}"), "post_metrics", [column])
-    op.create_index("ix_post_metrics_workspace_collected", "post_metrics", ["workspace_id", "collected_at"])
+    op.create_index(
+        "ix_post_metrics_workspace_collected",
+        "post_metrics",
+        ["workspace_id", "collected_at"],
+    )
 
     op.create_table(
         "audit_logs",
@@ -83,14 +129,20 @@ def upgrade() -> None:
         sa.Column("details", sa.JSON(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"], ["workspaces.id"], ondelete="CASCADE"
+        ),
         sa.ForeignKeyConstraint(["actor_user_id"], ["users.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_audit_logs_workspace_id", "audit_logs", ["workspace_id"])
     op.create_index("ix_audit_logs_actor_user_id", "audit_logs", ["actor_user_id"])
-    op.create_index("ix_audit_logs_workspace_created", "audit_logs", ["workspace_id", "created_at"])
-    op.create_index("ix_audit_logs_workspace_action", "audit_logs", ["workspace_id", "action"])
+    op.create_index(
+        "ix_audit_logs_workspace_created", "audit_logs", ["workspace_id", "created_at"]
+    )
+    op.create_index(
+        "ix_audit_logs_workspace_action", "audit_logs", ["workspace_id", "action"]
+    )
 
 
 def downgrade() -> None:

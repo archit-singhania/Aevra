@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import NextImage from "next/image";
 import {
   type ChangeEvent,
   type CSSProperties,
@@ -854,10 +855,13 @@ export function LiveWorkspace() {
               <div className="live-payment-card">
                 <p className="live-kicker">Payment verification</p>
                 <p>Scan with GPay, Paytm, BHIM, or any UPI app.</p>
-                <img
+                <NextImage
                   src={paymentInfo.qr_url || "/payments/vae-upi-qr.png"}
                   alt="VAE UPI payment QR"
                   className="live-payment-qr"
+                  width={150}
+                  height={150}
+                  unoptimized
                 />
                 <strong>
                   {paymentInfo.amount} {paymentInfo.currency}

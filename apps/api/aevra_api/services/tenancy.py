@@ -98,7 +98,9 @@ class TenancyService:
         if user is None or not user.is_active or not verify_password(password, user.password_hash):
             raise AuthenticationError("Incorrect email or password")
         if not user.is_admin and user.account_status != "approved":
-            raise AuthenticationError(f"Account is {user.account_status}; payment approval is required")
+            raise AuthenticationError(
+                f"Account is {user.account_status}; payment approval is required"
+            )
         user.last_login_at = datetime.now(UTC)
         self.session.commit()
         return user

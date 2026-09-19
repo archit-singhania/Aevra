@@ -28,7 +28,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["workspace_id"], ["workspaces.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("nonce_hash", name="uq_oauth_states_nonce_hash"),
     )
@@ -38,8 +40,14 @@ def upgrade() -> None:
     op.create_index("ix_oauth_states_user_id", "oauth_states", ["user_id"])
     op.create_index("ix_oauth_states_workspace_id", "oauth_states", ["workspace_id"])
     with op.batch_alter_table("social_accounts") as batch_op:
-        batch_op.add_column(sa.Column("refresh_token_ref", sa.String(length=2048), nullable=True))
-        batch_op.add_column(sa.Column("access_token_expires_at", sa.DateTime(timezone=True), nullable=True))
+        batch_op.add_column(
+            sa.Column("refresh_token_ref", sa.String(length=2048), nullable=True)
+        )
+        batch_op.add_column(
+            sa.Column(
+                "access_token_expires_at", sa.DateTime(timezone=True), nullable=True
+            )
+        )
         batch_op.add_column(
             sa.Column(
                 "granted_scopes",
