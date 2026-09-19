@@ -241,6 +241,13 @@ export function LiveWorkspace() {
   // as its scroll container or it silently tracks window scroll, which
   // never moves here.
   const contentRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    // Each sidebar destination starts at its heading, including a return to
+    // Overview after scrolling a longer view.
+    if (!view) return;
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+    setScrolled(false);
+  }, [view]);
   const currentCampaign = campaigns.find((item) => item.id === selected);
   const currentVariant = variants.find((item) => item.status === "approved") ?? variants[0];
   const playTone = useCallback(() => {

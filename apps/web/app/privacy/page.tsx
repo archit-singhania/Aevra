@@ -4,6 +4,13 @@ export default function PrivacyPage() {
   return (
     <main className="legal-page">
       <a href="/">← Back to VAE</a>
+      <nav className="legal-nav" aria-label="Legal pages">
+        <a href="/privacy" aria-current="page">
+          Privacy
+        </a>
+        <a href="/terms">Terms</a>
+        <a href="/account-deletion">Account deletion</a>
+      </nav>
       <Reveal3D>
         <p className="legal-kicker">VAE · Privacy</p>
         <h1>Privacy, with a clear paper trail.</h1>

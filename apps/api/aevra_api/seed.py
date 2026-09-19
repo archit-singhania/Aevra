@@ -17,8 +17,8 @@ def seed() -> None:
                 RegisterRequest(
                     email=settings.seed_email,
                     password=settings.seed_password,
-                    display_name="Aevra Owner",
-                    organization_name="Aevra Demo",
+                    display_name="VAE Owner",
+                    organization_name="VAE Demo",
                     workspace_name="Core workspace",
                     timezone="Asia/Kolkata",
                 )
@@ -39,13 +39,13 @@ def seed() -> None:
                 user.id,
                 workspace.id,
                 BrandCreateRequest(
-                    name="Aevra",
+                    name="VAE",
                     description="Agentic content intelligence grounded in brand evidence.",
                     industry="AI marketing infrastructure",
                     tone_attributes=["precise", "confident", "evidence-led"],
                     target_audiences=["marketing teams", "engineering leaders"],
                     preferred_ctas=["Explore the evidence"],
-                    preferred_hashtags=["#AgenticAI", "#RAG", "#Aevra"],
+                    preferred_hashtags=["#AgenticAI", "#RAG", "#VAE"],
                     status="active",
                 ),
             )

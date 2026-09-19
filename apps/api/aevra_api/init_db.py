@@ -6,7 +6,7 @@ from aevra_api.db.session import engine
 
 def main() -> None:
     Base.metadata.create_all(engine)
-    print("Aevra database ready")
+    print("VAE database ready")
 
 
 if __name__ == "__main__":

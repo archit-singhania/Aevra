@@ -4,6 +4,13 @@ export default function TermsPage() {
   return (
     <main className="legal-page">
       <a href="/">← Back to VAE</a>
+      <nav className="legal-nav" aria-label="Legal pages">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms" aria-current="page">
+          Terms
+        </a>
+        <a href="/account-deletion">Account deletion</a>
+      </nav>
       <Reveal3D>
         <p className="legal-kicker">VAE · Terms</p>
         <h1>Use the control room responsibly.</h1>

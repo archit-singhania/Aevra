@@ -1,6 +1,6 @@
-# Aevra Mobile
+# VAE Mobile
 
-The mobile client consumes the versioned Aevra API and never contains publishing credentials
+The mobile client consumes the versioned VAE API and never contains publishing credentials
 or model access. The stabilized Phase 12 contract is:
 
 - `GET /api/v1/workspaces/{workspace_id}/campaigns`

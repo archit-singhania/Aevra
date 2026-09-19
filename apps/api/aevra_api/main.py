@@ -36,9 +36,9 @@ class HealthResponse(BaseModel):
 
 
 app = FastAPI(
-    title="Aevra API",
+    title="VAE API",
     version="0.1.0",
-    description="Deterministic application boundary for Aevra.",
+    description="Deterministic application boundary for VAE.",
 )
 app.add_middleware(RequestContextMiddleware)
 _cors_origins = [

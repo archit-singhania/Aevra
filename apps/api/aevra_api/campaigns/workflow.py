@@ -226,7 +226,7 @@ class CampaignWorkflow:
                     ChatMessage(
                         role="system",
                         content=(
-                            "You are Aevra's grounded campaign writer. Return JSON only and "
+                            "You are VAE's grounded campaign writer. Return JSON only and "
                             "obey brand, evidence, and platform constraints."
                         ),
                     ),

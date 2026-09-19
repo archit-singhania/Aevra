@@ -1,5 +1,5 @@
 name: aevra_mobile
-description: Aevra's free, server-driven mobile workspace.
+description: VAE's free, server-driven mobile workspace.
 publish_to: none
 version: 0.1.0+1
 environment:

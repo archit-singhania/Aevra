@@ -30,7 +30,11 @@ def main() -> int:
     parser.add_argument("--access-key", default=os.getenv("AEVRA_MINIO_ACCESS_KEY"))
     parser.add_argument("--secret-key", default=os.getenv("AEVRA_MINIO_SECRET_KEY"))
     parser.add_argument("--bucket", default=os.getenv("AEVRA_MINIO_BUCKET", "aevra-assets"))
-    parser.add_argument("--secure", action="store_true")
+    parser.add_argument(
+        "--secure",
+        action=argparse.BooleanOptionalAction,
+        default=os.getenv("AEVRA_MINIO_SECURE", "0").lower() in {"1", "true", "yes"},
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     if not args.access_key or not args.secret_key:
@@ -79,7 +83,7 @@ def main() -> int:
                 )
             copied += 1
             print(f"uploaded {key}")
-        except Exception as error:  # pragma: no cover - operational script
+        except (S3Error, OSError) as error:  # pragma: no cover - operational script
             failed += 1
             print(f"failed {key}: {error}")
     print(f"completed copied={copied} skipped={skipped} failed={failed}")

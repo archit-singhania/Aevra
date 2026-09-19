@@ -4,6 +4,13 @@ export default function AccountDeletionPage() {
   return (
     <main className="legal-page">
       <a href="/">← Back to VAE</a>
+      <nav className="legal-nav" aria-label="Legal pages">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+        <a href="/account-deletion" aria-current="page">
+          Account deletion
+        </a>
+      </nav>
       <Reveal3D>
         <p className="legal-kicker">VAE · Account deletion</p>
         <h1>Request account deletion.</h1>

@@ -16,13 +16,13 @@ On the Render API service, keep the free baseline enabled:
 
 ```ini
 AEVRA_ENABLE_CELERY=0
-AEVRA_STORAGE_BACKEND=local
+AEVRA_STORAGE_BACKEND=minio
 AEVRA_IMAGE_PROVIDER=deterministic
 ```
 
-This baseline does not require a paid worker, GPU provider, hosted object
-store, or external monitoring subscription. Local/container media is suitable
-for staging only; it is not durable when a free container is restarted.
+This baseline does not require a paid worker or GPU provider. Backblaze B2 is
+used through its S3-compatible endpoint so media survives Render restarts.
+Keep the bucket private and stay within the provider's current free allowance.
 
 ## API deployment
 
@@ -84,6 +84,23 @@ with bounded exponential backoff.
 
 ## Persistent media
 
+Create a private Backblaze B2 bucket and a standard application key restricted
+to that bucket with read/write access. Use the key ID as the access key and the
+application key as the secret. Copy the S3 endpoint shown on the bucket page,
+remove `https://`, and configure the Render API service:
+
+```ini
+AEVRA_STORAGE_BACKEND=minio
+AEVRA_MINIO_ENDPOINT=s3.<region>.backblazeb2.com
+AEVRA_MINIO_ACCESS_KEY=<Backblaze key ID>
+AEVRA_MINIO_SECRET_KEY=<Backblaze application key>
+AEVRA_MINIO_BUCKET=<exact bucket name>
+AEVRA_MINIO_SECURE=1
+```
+
+Set Backblaze Caps & Alerts before enabling uploads. Never use the master
+application key and never place these values in Vercel or Git.
+
 Pause writes, preview the migration, then copy local media to the S3-compatible
 bucket without deleting the source:
 
@@ -94,6 +111,15 @@ python infrastructure/scripts/migrate-media-to-s3.py
 
 Set `AEVRA_STORAGE_BACKEND=minio` (or `s3`), the endpoint, credentials, and
 bucket on the API. Verify an asset download after restarting the container.
+
+Render Free PostgreSQL is limited to 1 GB, expires after 30 days, and has no
+managed backups. Export it before expiry and replace/repoint the database if
+you remain on the free plan. Render Free Key Value is in-memory only, so it is
+acceptable for rate-limit counters but not durable queues. Keep Celery off:
+
+```ini
+AEVRA_ENABLE_CELERY=0
+```
 
 ## Backups and restore checks
 
