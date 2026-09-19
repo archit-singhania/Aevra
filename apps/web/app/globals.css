@@ -4919,6 +4919,69 @@ html[data-theme="light"] .live-theme-toggle {
   color: var(--muted);
   line-height: 1.55;
 }
+.platform-picker {
+  min-width: 0;
+}
+.platform-picker legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.platform-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.platform-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-soft);
+  background: rgba(var(--glass-sheen), 0.035);
+  cursor: pointer;
+  transition: 180ms ease;
+}
+.platform-option:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+.platform-option input {
+  accent-color: var(--accent);
+}
+.upload-dropzone {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 16px;
+  color: var(--text-soft);
+  background: rgba(var(--glass-sheen), 0.035);
+  cursor: pointer;
+  transition: 180ms ease;
+}
+.upload-dropzone:hover {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+.upload-dropzone small {
+  grid-column: 2;
+  color: var(--muted);
+}
+.upload-dropzone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
 .confirm-close {
   position: absolute;
   top: 16px;
@@ -4957,4 +5020,30 @@ html[data-theme="light"] .confirm-dialog h2 {
 }
 html[data-theme="light"] .confirm-dialog > p:not(.live-kicker) {
   color: #475750;
+}
+.live-payment-card {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+}
+.live-payment-card p {
+  margin: 0;
+  color: var(--muted);
+}
+.live-payment-card code {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.live-payment-qr {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
+  margin: 0 auto;
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
 }

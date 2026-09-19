@@ -14,6 +14,10 @@ class ScheduleCreateRequest(BaseModel):
     media_urls: list[str] = Field(default_factory=list, max_length=4)
 
 
+class ScheduleRescheduleRequest(BaseModel):
+    scheduled_for: datetime
+
+
 class ScheduledPostResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

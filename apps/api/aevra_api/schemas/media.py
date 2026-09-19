@@ -60,7 +60,7 @@ class MediaAssetResponse(BaseModel):
 
     id: uuid.UUID
     workspace_id: uuid.UUID
-    campaign_id: uuid.UUID
+    campaign_id: uuid.UUID | None
     created_by_user_id: uuid.UUID
     parent_asset_id: uuid.UUID | None
     media_type: MediaType
@@ -86,3 +86,7 @@ class MediaAssetResponse(BaseModel):
 
 class MediaGenerationResponse(BaseModel):
     assets: list[MediaAssetResponse]
+
+
+class MediaAttachRequest(BaseModel):
+    campaign_id: uuid.UUID

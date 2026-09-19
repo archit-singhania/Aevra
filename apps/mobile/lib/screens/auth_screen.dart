@@ -25,6 +25,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _name = TextEditingController();
   final _org = TextEditingController();
   final _workspaceName = TextEditingController();
+  final _utr = TextEditingController();
 
   @override
   void dispose() {
@@ -33,6 +34,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _name.dispose();
     _org.dispose();
     _workspaceName.dispose();
+    _utr.dispose();
     super.dispose();
   }
 
@@ -148,7 +150,18 @@ class _AuthScreenState extends State<AuthScreen> {
                               _ErrorBanner(message: widget.state.error!),
                               const SizedBox(height: AevraSpace.sm),
                             ],
-                            if (!isLogin) ...[
+                            if (widget.state.paymentPending && widget.state.paymentInfo != null) ...[
+                              Text('Payment verification', style: AevraType.eyebrow()),
+                              const SizedBox(height: AevraSpace.sm),
+                              Text('Scan with GPay, Paytm, BHIM, or any UPI app.', style: const TextStyle(color: AevraColors.textSoft)),
+                              if (widget.state.paymentInfo!.qrUrl.isNotEmpty) Image.network(widget.state.paymentInfo!.qrUrl, width: 160, height: 160),
+                              Text('${widget.state.paymentInfo!.amount} ${widget.state.paymentInfo!.currency}'),
+                              Text(widget.state.paymentInfo!.upiId),
+                              _Field(label: 'UTR / transaction reference', controller: _utr),
+                              const SizedBox(height: AevraSpace.sm),
+                              SizedBox(width: double.infinity, child: FilledButton(onPressed: widget.state.loading ? null : () => widget.state.submitPayment(_utr.text.trim()), child: const Text('Submit payment proof'))),
+                              const SizedBox(height: AevraSpace.md),
+                            ] else if (!isLogin) ...[
                               _Field(label: 'Your name', controller: _name),
                               const SizedBox(height: AevraSpace.sm),
                               _Field(label: 'Organization', controller: _org),

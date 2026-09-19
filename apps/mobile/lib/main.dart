@@ -217,19 +217,19 @@ class _MobileShellState extends State<MobileShell> {
     widget.sound.tap();
     showCommandPalette(context, [
       CommandAction(
-        label: 'Go to Overview',
+        label: 'Go to Home',
         hint: 'Workspace summary and recent campaigns',
         icon: Icons.space_dashboard_outlined,
         run: () => _go(0),
       ),
       CommandAction(
-        label: 'Go to Campaigns',
+        label: 'Go to Create',
         hint: 'Review queue and approvals',
         icon: Icons.auto_awesome_outlined,
         run: () => _go(1),
       ),
       CommandAction(
-        label: 'Go to Schedule',
+        label: 'Go to Calendar',
         hint: 'Upcoming scheduled posts',
         icon: Icons.schedule_outlined,
         run: () => _go(2),
@@ -402,7 +402,7 @@ class _MobileShellState extends State<MobileShell> {
     );
   }
 
-  static const _titles = ['Overview', 'Campaigns', 'Schedule', 'Analytics'];
+  static const _titles = ['Home', 'Create', 'Calendar', 'Analytics'];
 }
 
 /// Custom glass top bar — the mobile equivalent of the web app's `.topbar`.

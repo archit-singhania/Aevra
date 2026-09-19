@@ -41,6 +41,8 @@ class UserResponse(BaseModel):
     email: str
     display_name: str
     is_active: bool
+    is_admin: bool = False
+    account_status: str = "approved"
     created_at: datetime
 
 
@@ -69,7 +71,48 @@ class RegistrationResponse(BaseModel):
     user: UserResponse
     organization: OrganizationResponse
     workspace: WorkspaceResponse
-    token: TokenResponse
+    token: TokenResponse | None = None
+    account_status: str = "pending_payment"
+    payment_required: bool = True
+    onboarding_token: str | None = None
+
+
+class PaymentInstructionsResponse(BaseModel):
+    amount: str
+    currency: str
+    upi_id: str
+    qr_url: str
+    support_email: str
+    expires_in_days: int
+
+
+class PaymentSubmissionRequest(BaseModel):
+    onboarding_token: str | None = None
+    utr_reference: str | None = Field(default=None, max_length=128)
+    proof_asset_id: uuid.UUID | None = None
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class PaymentStatusResponse(BaseModel):
+    status: str
+    admin_note: str | None = None
+    submitted_at: datetime | None = None
+
+
+class AdminPaymentResponse(PaymentStatusResponse):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    tenant_id: uuid.UUID
+    email: str
+    display_name: str
+    amount: str
+    currency: str
+    utr_reference: str | None = None
+    proof_asset_id: uuid.UUID | None = None
+
+
+class PaymentReviewRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=1000)
 
 
 class AccountDeletionResponse(BaseModel):

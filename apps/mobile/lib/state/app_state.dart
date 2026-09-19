@@ -19,6 +19,9 @@ class AppState extends ChangeNotifier {
   bool hydrated = false;
   bool loading = false;
   String? error;
+  String? onboardingToken;
+  PaymentInstructions? paymentInfo;
+  bool get paymentPending => onboardingToken != null;
 
   AevraUser? user;
   Workspace? workspace;
@@ -67,7 +70,7 @@ class AppState extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      final accessToken = await client.register(
+      final registration = await client.register(
         email: email,
         password: password,
         displayName: displayName,
@@ -75,9 +78,34 @@ class AppState extends ChangeNotifier {
         workspaceName: workspaceName,
         timezone: timezone,
       );
-      await _storage.write(key: _tokenKey, value: accessToken);
-      token = accessToken;
-      await load();
+      if (registration.accessToken == null) {
+        onboardingToken = registration.onboardingToken;
+        paymentInfo = await client.paymentInstructions();
+        error = null;
+      } else {
+        await _storage.write(key: _tokenKey, value: registration.accessToken);
+        token = registration.accessToken;
+        await load();
+      }
+    } catch (caught) {
+      error = caught.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> submitPayment(String utr, {String? note}) async {
+    final current = onboardingToken;
+    if (current == null) return;
+    loading = true;
+    error = null;
+    notifyListeners();
+    try {
+      await client.submitPayment(current, utr, note: note);
+      onboardingToken = null;
+      paymentInfo = null;
+      error = 'Payment submitted for manual verification. Sign in after approval.';
     } catch (caught) {
       error = caught.toString();
     } finally {

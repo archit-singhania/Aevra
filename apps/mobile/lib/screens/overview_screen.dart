@@ -31,7 +31,7 @@ class _StatSpec {
 
 class _OverviewScreenState extends State<OverviewScreen> {
   static final List<_StatSpec> _specs = [
-    _StatSpec('brain', 'Brand Brain', 'indexed sources', Icons.hub_outlined, AevraColors.frost,
+    _StatSpec('brain', 'Knowledge base', 'indexed sources', Icons.hub_outlined, AevraColors.frost,
         (s) => s.documents.length),
     _StatSpec('campaigns', 'Campaigns', 'in workspace', Icons.auto_awesome_outlined, AevraColors.accent,
         (s) => s.campaigns.length),

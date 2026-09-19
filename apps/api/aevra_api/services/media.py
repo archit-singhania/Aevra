@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import hashlib
+import mimetypes
 import tempfile
 import uuid
 from typing import Any, Literal, cast
@@ -31,7 +33,7 @@ from aevra_api.media.video_contracts import (
 )
 from aevra_api.repositories.media import MediaRepository
 from aevra_api.repositories.tenancy import TenancyRepository
-from aevra_api.schemas.media import ImageGenerateRequest, VideoComposeRequest
+from aevra_api.schemas.media import ImageGenerateRequest, MediaAttachRequest, VideoComposeRequest
 from aevra_api.services.brands import BrandService
 
 MEDIA_EDIT_ROLES = {"owner", "admin", "member"}
@@ -96,6 +98,72 @@ class MediaService:
         if campaign is None:
             raise NotFoundError("Campaign not found")
         return campaign
+
+    def upload_asset(
+        self,
+        user_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        campaign_id: uuid.UUID | None,
+        filename: str,
+        content_type: str,
+        content: bytes,
+    ) -> MediaAsset:
+        """Persist a user-provided image/video through the configured storage adapter."""
+        self._require_editor(user_id, workspace_id)
+        campaign = self._campaign(user_id, workspace_id, campaign_id) if campaign_id else None
+        normalized_type = content_type.lower().split(";", 1)[0]
+        if normalized_type not in {"image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime"}:
+            raise GenerationError("Only JPEG, PNG, WebP, MP4, and MOV uploads are supported.")
+        if not content:
+            raise GenerationError("The uploaded file is empty.")
+        if len(content) > 50 * 1024 * 1024:
+            raise GenerationError("Uploads must be 50 MB or smaller.")
+        media_type = "image" if normalized_type.startswith("image/") else "video"
+        asset_id = uuid.uuid4()
+        extension = (filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin")[:8]
+        storage_key = self.storage.key_for(workspace_id, asset_id, extension)
+        self._write(storage_key, content, normalized_type)
+        width = height = None
+        if media_type == "image":
+            try:
+                with Image.open(io.BytesIO(content)) as image:
+                    width, height = image.size
+            except Exception as error:
+                raise GenerationError("The uploaded image could not be decoded.") from error
+        asset = MediaAsset(
+            id=asset_id,
+            workspace_id=workspace_id,
+            campaign_id=campaign.id if campaign else None,
+            created_by_user_id=user_id,
+            media_type=media_type,
+            asset_role="source",
+            status="ready",
+            storage_key=storage_key,
+            filename=filename[:255],
+            mime_type=normalized_type,
+            bytes_size=len(content),
+            sha256=hashlib.sha256(content).hexdigest(),
+            width=width,
+            height=height,
+            generation_provider="upload",
+            prompt=None,
+            asset_metadata={"original_filename": filename, "content_type": normalized_type},
+        )
+        self.repository.add(asset)
+        self.session.commit()
+        return asset
+
+    def attach_asset(
+        self, user_id: uuid.UUID, workspace_id: uuid.UUID, asset_id: uuid.UUID, request: MediaAttachRequest
+    ) -> MediaAsset:
+        self._require_editor(user_id, workspace_id)
+        asset = self.repository.get_for_user(user_id, workspace_id, asset_id)
+        if asset is None:
+            raise NotFoundError("Media asset not found")
+        campaign = self._campaign(user_id, workspace_id, request.campaign_id)
+        asset.campaign_id = campaign.id
+        self.session.commit()
+        return asset
 
     @staticmethod
     def _brand_style(brand: BrandProfile, request: ImageGenerateRequest) -> BrandVisualStyle | None:

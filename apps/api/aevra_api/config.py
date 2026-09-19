@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./aevra.db"
     seed_email: str = "owner@aevra.local"
     seed_password: str = Field(default="AevraLocalOnly!2026", min_length=12)
+    admin_email: str = "admin@vae.local"
+    admin_password: str = Field(default="VaeAdminLocalOnly!2026", min_length=12)
+    admin_display_name: str = "VAE Admin"
+    payment_amount: str = "0"
+    payment_currency: str = "INR"
+    payment_upi_id: str = ""
+    payment_qr_url: str = ""
+    payment_support_email: str = "support@vae.local"
+    payment_expiry_days: int = Field(default=7, ge=1, le=90)
     embedding_dimensions: int = Field(default=384, ge=64, le=4096)
     knowledge_chunk_chars: int = Field(default=900, ge=200, le=4000)
     knowledge_chunk_overlap: int = Field(default=120, ge=0, le=1000)

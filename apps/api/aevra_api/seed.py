@@ -11,19 +11,23 @@ def seed() -> None:
     settings = get_settings()
     with SessionLocal() as session:
         service = TenancyService(session)
-        user = service.repository.get_user_by_email(settings.seed_email)
+        user = service.repository.get_user_by_email(settings.admin_email)
         if user is None:
             result = service.register(
                 RegisterRequest(
-                    email=settings.seed_email,
-                    password=settings.seed_password,
-                    display_name="VAE Owner",
+                    email=settings.admin_email,
+                    password=settings.admin_password,
+                    display_name=settings.admin_display_name,
                     organization_name="VAE Demo",
                     workspace_name="Core workspace",
                     timezone="Asia/Kolkata",
                 )
             )
             user = result.user
+            user.account_status = "approved"
+            user.payment_required = False
+            user.is_admin = True
+            session.commit()
             workspace = result.workspace
         else:
             workspaces = service.list_workspaces(user.id)

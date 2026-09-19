@@ -1,11 +1,13 @@
 import uuid
+import mimetypes
 from typing import Literal
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, File, Response, UploadFile, status
 
 from aevra_api.api.dependencies import CurrentUser, SessionDep, SettingsDep
 from aevra_api.schemas.media import (
     ImageGenerateRequest,
+    MediaAttachRequest,
     MediaAssetResponse,
     MediaGenerationResponse,
     VideoComposeRequest,
@@ -19,6 +21,40 @@ def _response(asset: object, workspace_id: uuid.UUID) -> MediaAssetResponse:
     response = MediaAssetResponse.model_validate(asset)
     response.download_url = f"/api/v1/workspaces/{workspace_id}/media/assets/{response.id}/download"
     return response
+
+
+@router.post("/assets/upload", response_model=MediaAssetResponse, status_code=status.HTTP_201_CREATED)
+async def upload_asset(
+    workspace_id: uuid.UUID,
+    current_user: CurrentUser,
+    session: SessionDep,
+    settings: SettingsDep,
+    campaign_id: uuid.UUID | None = None,
+    file: UploadFile = File(...),
+) -> MediaAssetResponse:
+    content = await file.read()
+    asset = MediaService(session, settings).upload_asset(
+        current_user.id,
+        workspace_id,
+        campaign_id,
+        file.filename or "upload",
+        file.content_type or (mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"),
+        content,
+    )
+    return _response(asset, workspace_id)
+
+
+@router.post("/assets/{asset_id}/attach", response_model=MediaAssetResponse)
+def attach_asset(
+    workspace_id: uuid.UUID,
+    asset_id: uuid.UUID,
+    request: MediaAttachRequest,
+    current_user: CurrentUser,
+    session: SessionDep,
+    settings: SettingsDep,
+) -> MediaAssetResponse:
+    asset = MediaService(session, settings).attach_asset(current_user.id, workspace_id, asset_id, request)
+    return _response(asset, workspace_id)
 
 
 @router.post(

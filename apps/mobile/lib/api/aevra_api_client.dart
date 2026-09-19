@@ -14,6 +14,22 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
+class RegistrationResult {
+  const RegistrationResult({this.accessToken, this.onboardingToken, required this.accountStatus});
+  final String? accessToken;
+  final String? onboardingToken;
+  final String accountStatus;
+}
+
+class PaymentInstructions {
+  const PaymentInstructions({required this.amount, required this.currency, required this.upiId, required this.qrUrl, required this.supportEmail});
+  final String amount;
+  final String currency;
+  final String upiId;
+  final String qrUrl;
+  final String supportEmail;
+}
+
 /// Mirrors apps/web/lib/api.ts — same base URL convention, same endpoints,
 /// same bearer-token auth. Point `baseUrl` at the same FastAPI workspace the
 /// web app talks to.
@@ -82,7 +98,7 @@ class AevraApiClient {
         parse: (json) => json['access_token'] as String,
       );
 
-  Future<String> register({
+  Future<RegistrationResult> register({
     required String email,
     required String password,
     required String displayName,
@@ -90,7 +106,7 @@ class AevraApiClient {
     required String workspaceName,
     required String timezone,
   }) =>
-      _request<String>(
+      _request<RegistrationResult>(
         '/auth/register',
         method: 'POST',
         body: {
@@ -101,13 +117,35 @@ class AevraApiClient {
           'workspace_name': workspaceName,
           'timezone': timezone,
         },
-        parse: (json) => json['token']['access_token'] as String,
+        parse: (json) => RegistrationResult(
+          accessToken: (json['token'] as Map<String, dynamic>?)?['access_token'] as String?,
+          onboardingToken: json['onboarding_token'] as String?,
+          accountStatus: json['account_status'] as String? ?? 'pending_payment',
+        ),
       );
 
   Future<AevraUser> me(String token) => _request<AevraUser>(
         '/auth/me',
         token: token,
         parse: (json) => AevraUser.fromJson(json as Map<String, dynamic>),
+      );
+
+  Future<PaymentInstructions> paymentInstructions() => _request<PaymentInstructions>(
+        '/auth/onboarding/payment-instructions',
+        parse: (json) => PaymentInstructions(
+          amount: json['amount'] as String? ?? '0',
+          currency: json['currency'] as String? ?? 'INR',
+          upiId: json['upi_id'] as String? ?? '',
+          qrUrl: json['qr_url'] as String? ?? '',
+          supportEmail: json['support_email'] as String? ?? '',
+        ),
+      );
+
+  Future<void> submitPayment(String onboardingToken, String utr, {String? note}) => _request<void>(
+        '/auth/onboarding/payment-submissions/public',
+        method: 'POST',
+        body: {'onboarding_token': onboardingToken, 'utr_reference': utr, if (note != null) 'note': note},
+        parse: (_) => null,
       );
 
   Future<List<Workspace>> workspaces(String token) => _request<List<Workspace>>(

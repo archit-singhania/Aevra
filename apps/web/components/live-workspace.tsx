@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import {
+  type ChangeEvent,
   type CSSProperties,
   type FormEvent,
   type MouseEvent,
@@ -86,6 +87,7 @@ import {
   type ContentVariant,
   type KnowledgeDocument,
   type MediaAsset,
+  type PaymentSubmission,
   type Platform,
   type PostMetric,
   type ScheduledPost,
@@ -110,7 +112,7 @@ function handleGlow(event: MouseEvent<HTMLElement>) {
   );
 }
 
-type View = "overview" | "campaigns" | "brain" | "media" | "publishing" | "analytics";
+type View = "overview" | "campaigns" | "brain" | "media" | "publishing" | "analytics" | "admin";
 const browserSession = "cookie";
 const legacyTokenKey = "vae.staging.access-token";
 const platforms: Array<{ id: Platform; label: string }> = [
@@ -214,20 +216,31 @@ export function LiveWorkspace() {
   const [product, setProduct] = useState("");
   const [audience, setAudience] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [platform, setPlatform] = useState<Platform>("linkedin");
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>(["linkedin"]);
   const [mediaPrompt, setMediaPrompt] = useState("");
   const [mediaCampaign, setMediaCampaign] = useState("");
-  const [accountPlatform, setAccountPlatform] = useState<Platform>("linkedin");
-  const [accountName, setAccountName] = useState("");
-  const [externalId, setExternalId] = useState("");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [publishCampaign, setPublishCampaign] = useState("");
-  const [publishAccount, setPublishAccount] = useState("");
+  const [publishAccounts, setPublishAccounts] = useState<string[]>([]);
   const [publishText, setPublishText] = useState("");
   const [scheduleAt, setScheduleAt] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [onboarding, setOnboarding] = useState<{ token: string; email: string } | null>(null);
+  const [paymentInfo, setPaymentInfo] = useState<{
+    amount: string;
+    currency: string;
+    upi_id: string;
+    qr_url: string;
+    support_email: string;
+    expires_in_days: number;
+  } | null>(null);
+  const [paymentUtr, setPaymentUtr] = useState("");
+  const [paymentNote, setPaymentNote] = useState("");
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [paymentSubmissions, setPaymentSubmissions] = useState<PaymentSubmission[]>([]);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof window === "undefined") return "dark";
     return window.localStorage.getItem("vae.theme") === "light" ? "light" : "dark";
@@ -349,7 +362,9 @@ export function LiveWorkspace() {
         setSelected((value) => value || nextCampaigns[0]?.id || "");
         setMediaCampaign((value) => value || nextCampaigns[0]?.id || "");
         setPublishCampaign((value) => value || nextCampaigns[0]?.id || "");
-        setPublishAccount((value) => value || nextAccounts[0]?.id || "");
+        setPublishAccounts((value) =>
+          value.length ? value : nextAccounts[0]?.id ? [nextAccounts[0].id] : [],
+        );
       } catch (caught) {
         if (caught instanceof Error && caught.message.includes("401")) reset();
         setError(caught instanceof Error ? caught.message : "Unable to load workspace.");
@@ -441,32 +456,90 @@ export function LiveWorkspace() {
               workspace_name: workspaceName,
               timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
             });
-      // The API also returns a bearer token for native apps, but the browser
-      // intentionally uses the HTTP-only cookie set by the same response.
-      void result;
-      setToken(browserSession);
+      if (
+        mode === "register" &&
+        "account_status" in result &&
+        result.account_status !== "approved"
+      ) {
+        if (result.onboarding_token) {
+          setOnboarding({ token: result.onboarding_token, email });
+          setPaymentInfo(await api.paymentInstructions());
+          setError(null);
+        } else {
+          setError("Account created. Complete payment verification before signing in.");
+          setMode("login");
+        }
+      } else {
+        // The browser intentionally uses the HTTP-only cookie set by the response.
+        setToken(browserSession);
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Authentication failed.");
     } finally {
       setBusy(null);
     }
   };
+  const submitPayment = async (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!onboarding || !paymentUtr.trim()) return;
+    setBusy("auth");
+    try {
+      if (paymentProof) {
+        await api.submitPaymentProof(
+          onboarding.token,
+          paymentUtr.trim(),
+          paymentNote.trim(),
+          paymentProof,
+        );
+      } else {
+        await api.submitPaymentPublic({
+          onboarding_token: onboarding.token,
+          utr_reference: paymentUtr.trim(),
+          note: paymentNote.trim() || undefined,
+        });
+      }
+      setError("Payment submitted for manual verification. You can sign in after approval.");
+      setOnboarding(null);
+      setMode("login");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Payment submission failed.");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const loadPaymentSubmissions = async () => {
+    if (!token || !user?.is_admin) return;
+    await run("admin-payments", async () => setPaymentSubmissions(await api.adminPayments(token)));
+  };
+  const reviewPayment = async (item: PaymentSubmission, decision: "approve" | "reject") => {
+    if (!token) return;
+    const note = decision === "reject" ? window.prompt("Reason for rejection") : undefined;
+    if (decision === "reject" && !note) return;
+    await run(`review-${item.id}`, async () => {
+      await api.reviewPayment(token, item.id, decision, note ?? undefined);
+      await loadPaymentSubmissions();
+      setNotice(`Payment ${decision}d.`);
+    });
+  };
   const createCampaign = async (event: FormEvent) => {
     event.preventDefault();
-    if (!token || !workspace || !brands[0]) {
-      setView("brain");
-      setError("Create a Brand Brain profile first.");
+    if (!token || !workspace) {
+      setError("Your workspace is still loading. Please try again.");
+      return;
+    }
+    if (!selectedPlatforms.length) {
+      setError("Select at least one target channel.");
       return;
     }
     await run("campaign", async () => {
       const campaign = await api.createCampaign(token, workspace.id, {
-        brand_id: brands[0].id,
+        brand_id: brands[0]?.id ?? null,
         name: campaignName,
         goal,
         product_service: product,
         audience,
         instructions,
-        platforms: [platform],
+        platforms: selectedPlatforms,
         media_types: ["text", "image"],
         publishing_mode: "manual",
       });
@@ -575,6 +648,30 @@ export function LiveWorkspace() {
       playTone();
     });
   };
+  const uploadMedia = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !token || !workspace) return;
+    setUploadingMedia(true);
+    setError(null);
+    try {
+      const asset = await api.uploadMedia(token, workspace.id, mediaCampaign, file);
+      setAssets((items) => [asset, ...items]);
+      setNotice(`${file.name} uploaded to the media library.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Media upload failed.");
+    } finally {
+      setUploadingMedia(false);
+      event.target.value = "";
+    }
+  };
+  const attachMedia = async (asset: MediaAsset) => {
+    if (!token || !workspace || !mediaCampaign) return;
+    await run(`attach-${asset.id}`, async () => {
+      const attached = await api.attachMedia(token, workspace.id, asset.id, mediaCampaign);
+      setAssets((items) => items.map((item) => (item.id === attached.id ? attached : item)));
+      setNotice(`${asset.filename} attached to the selected campaign.`);
+    });
+  };
   const downloadAsset = async (asset: MediaAsset) => {
     if (!token || !asset.download_url) return;
     await run(`download-${asset.id}`, async () => {
@@ -589,22 +686,6 @@ export function LiveWorkspace() {
       link.download = asset.filename;
       link.click();
       URL.revokeObjectURL(objectUrl);
-    });
-  };
-  const connect = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!token || !workspace) return;
-    await run("connect", async () => {
-      const account = await api.connectAccount(token, workspace.id, {
-        platform: accountPlatform,
-        external_account_id: externalId,
-        display_name: accountName,
-        access_token_ref: `staging-ref-${externalId}`,
-        capabilities: ["publish", "analytics"],
-      });
-      setAccounts((items) => [account, ...items]);
-      setPublishAccount(account.id);
-      setNotice("Publishing account connected.");
     });
   };
   const startOAuth = async (
@@ -648,29 +729,66 @@ export function LiveWorkspace() {
       !token ||
       !workspace ||
       !publishCampaign ||
-      !publishAccount ||
+      !publishAccounts.length ||
       !(publishText || currentVariant?.caption)
     )
       return;
     await run(shouldSchedule ? "schedule" : "publish", async () => {
-      const payload = {
-        campaign_id: publishCampaign,
-        social_account_id: publishAccount,
-        idempotency_key: idempotency(),
-        text: publishText || currentVariant?.caption || "",
-        media_urls: [],
-      };
+      const results = await Promise.all(
+        publishAccounts.map(async (accountId) => {
+          const payload = {
+            campaign_id: publishCampaign,
+            social_account_id: accountId,
+            idempotency_key: idempotency(),
+            text: publishText || currentVariant?.caption || "",
+            media_urls: [],
+          };
+          if (shouldSchedule) {
+            return api.schedule(token, workspace.id, {
+              ...payload,
+              scheduled_for: new Date(scheduleAt || Date.now() + 86_400_000).toISOString(),
+            });
+          }
+          return api.publish(token, workspace.id, payload);
+        }),
+      );
       if (shouldSchedule) {
-        const item = await api.schedule(token, workspace.id, {
-          ...payload,
-          scheduled_for: new Date(scheduleAt || Date.now() + 86_400_000).toISOString(),
-        });
-        setScheduled((items) => [item, ...items]);
-        setNotice(`Post scheduled for ${date(item.scheduled_for)}.`);
+        setScheduled((items) => [...(results as ScheduledPost[]), ...items]);
+        setNotice(`${results.length} channel${results.length === 1 ? "" : "s"} scheduled.`);
       } else {
-        const job = await api.publish(token, workspace.id, payload);
-        setNotice(`Publishing job is ${job.status}.`);
+        const failed = results.filter((item) => item.status === "failed").length;
+        setNotice(
+          failed
+            ? `${results.length - failed} published, ${failed} failed.`
+            : `${results.length} channel${results.length === 1 ? "" : "s"} published.`,
+        );
       }
+    });
+  };
+  const cancelScheduled = async (postId: string) => {
+    if (!token || !workspace) return;
+    await run(`cancel-${postId}`, async () => {
+      const item = await api.cancelScheduled(token, workspace.id, postId);
+      setScheduled((items) => items.map((current) => (current.id === item.id ? item : current)));
+      setNotice("Scheduled post cancelled.");
+    });
+  };
+  const retryScheduled = async (postId: string) => {
+    if (!token || !workspace) return;
+    await run(`retry-${postId}`, async () => {
+      const item = await api.retryScheduled(token, workspace.id, postId);
+      setScheduled((items) => items.map((current) => (current.id === item.id ? item : current)));
+      setNotice("Failed post returned to the delivery queue.");
+    });
+  };
+  const reschedule = async (post: ScheduledPost) => {
+    if (!token || !workspace) return;
+    const next = window.prompt("Enter a future date/time (ISO format)", post.scheduled_for);
+    if (!next) return;
+    await run(`reschedule-${post.id}`, async () => {
+      const item = await api.reschedule(token, workspace.id, post.id, new Date(next).toISOString());
+      setScheduled((items) => items.map((current) => (current.id === item.id ? item : current)));
+      setNotice(`Post rescheduled for ${date(item.scheduled_for)}.`);
     });
   };
   if (!token)
@@ -728,10 +846,50 @@ export function LiveWorkspace() {
                 className={cn(mode === "register" && "active")}
                 onClick={() => setMode("register")}
               >
-                Create workspace
+                Get started
               </button>
             </div>
             <h2>{mode === "login" ? "Welcome back" : "Start your VAE workspace"}</h2>
+            {onboarding && paymentInfo && (
+              <div className="live-payment-card">
+                <p className="live-kicker">Payment verification</p>
+                <p>Scan with GPay, Paytm, BHIM, or any UPI app.</p>
+                <img
+                  src={paymentInfo.qr_url || "/payments/vae-upi-qr.png"}
+                  alt="VAE UPI payment QR"
+                  className="live-payment-qr"
+                />
+                <strong>
+                  {paymentInfo.amount} {paymentInfo.currency}
+                </strong>
+                <code>
+                  {paymentInfo.upi_id || "UPI ID will be configured by the administrator"}
+                </code>
+                <input
+                  value={paymentUtr}
+                  onChange={(event) => setPaymentUtr(event.target.value)}
+                  placeholder="UTR / transaction reference"
+                />
+                <input
+                  value={paymentNote}
+                  onChange={(event) => setPaymentNote(event.target.value)}
+                  placeholder="Optional payment note"
+                />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => setPaymentProof(event.target.files?.[0] ?? null)}
+                />
+                <Button
+                  type="button"
+                  className="live-full-button"
+                  disabled={busy === "auth" || (!paymentUtr.trim() && !paymentProof)}
+                  onClick={() => void submitPayment()}
+                >
+                  Submit payment proof
+                </Button>
+              </div>
+            )}
             {error && (
               <div className="live-alert error">
                 <CircleAlert size={15} /> {error}
@@ -790,19 +948,21 @@ export function LiveWorkspace() {
                 ? "Opening workspace…"
                 : mode === "login"
                   ? "Enter workspace"
-                  : "Create workspace"}
+                  : "Get started free"}
             </Button>
           </motion.form>
         </main>
       </MotionConfig>
     );
   const nav = [
-    { id: "overview" as View, label: "Overview", icon: BrainCircuit },
-    { id: "campaigns" as View, label: "Campaigns", icon: Sparkles },
-    { id: "brain" as View, label: "Brand Brain", icon: Search },
-    { id: "media" as View, label: "Content library", icon: Image },
-    { id: "publishing" as View, label: "Calendar & publishing", icon: CalendarDays },
+    { id: "overview" as View, label: "Home", icon: BrainCircuit },
+    { id: "campaigns" as View, label: "Create", icon: Sparkles },
+    { id: "media" as View, label: "Media", icon: Image },
+    { id: "publishing" as View, label: "Channels & calendar", icon: CalendarDays },
     { id: "analytics" as View, label: "Analytics", icon: BrainCircuit },
+    ...(user?.is_admin
+      ? [{ id: "admin" as View, label: "Payment review", icon: ShieldCheck }]
+      : []),
   ];
   const overview = (
     <>
@@ -828,7 +988,7 @@ export function LiveWorkspace() {
       <Reveal className="live-stats bento-grid">
         {metricOrder.map((metric) => {
           const metricData = {
-            sources: [BrainCircuit, "Brand Brain", documents.length, "indexed sources"],
+            sources: [BrainCircuit, "Knowledge base", documents.length, "indexed sources"],
             campaigns: [Sparkles, "Campaigns", campaigns.length, "in workspace"],
             approval: [
               ShieldCheck,
@@ -974,11 +1134,11 @@ export function LiveWorkspace() {
           <span className="live-helper">Everything stays reviewable</span>
         </div>
         <div className="overview-actions">
-          <button type="button" className="overview-action" onClick={() => setView("brain")}>
-            <BrainCircuit size={18} />
+          <button type="button" className="overview-action" onClick={() => setView("campaigns")}>
+            <Sparkles size={18} />
             <span>
-              <strong>{brands.length ? "Refine Brand Brain" : "Set up Brand Brain"}</strong>
-              <small>Ground every claim in your approved source material.</small>
+              <strong>Start creating</strong>
+              <small>Turn a brief into review-ready content for your channels.</small>
             </span>
             <ArrowRight size={15} />
           </button>
@@ -1050,15 +1210,27 @@ export function LiveWorkspace() {
             />
           </Field>
           <div className="live-form-grid">
-            <Field label="Primary platform">
-              <select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)}>
+            <fieldset className="live-field platform-picker">
+              <legend>Target channels</legend>
+              <div className="platform-picker-grid">
                 {platforms.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
-                  </option>
+                  <label key={item.id} className="platform-option">
+                    <input
+                      type="checkbox"
+                      checked={selectedPlatforms.includes(item.id)}
+                      onChange={() =>
+                        setSelectedPlatforms((current) =>
+                          current.includes(item.id)
+                            ? current.filter((value) => value !== item.id)
+                            : [...current, item.id],
+                        )
+                      }
+                    />
+                    <span>{item.label}</span>
+                  </label>
                 ))}
-              </select>
-            </Field>
+              </div>
+            </fieldset>
             <Field label="Instructions">
               <input
                 value={instructions}
@@ -1144,7 +1316,7 @@ export function LiveWorkspace() {
     <div className="live-columns">
       <section className="live-panel">
         <Reveal3D>
-          <p className="live-kicker">Brand Brain</p>
+          <p className="live-kicker">Knowledge base</p>
           <h2>Profile & evidence</h2>
         </Reveal3D>
         {brands[0] ? (
@@ -1240,7 +1412,7 @@ export function LiveWorkspace() {
           ) : (
             <Empty
               icon={FileText}
-              title="Brand Brain is waiting"
+              title="Knowledge base is waiting"
               body="Index an approved source to ground generation."
             />
           )}
@@ -1257,12 +1429,8 @@ export function LiveWorkspace() {
         </Reveal3D>
         <form className="live-form" onSubmit={createImage}>
           <Field label="Campaign">
-            <select
-              required
-              value={mediaCampaign}
-              onChange={(e) => setMediaCampaign(e.target.value)}
-            >
-              <option value="">Select campaign</option>
+            <select value={mediaCampaign} onChange={(e) => setMediaCampaign(e.target.value)}>
+              <option value="">Media library only</option>
               {campaigns.map((item) => (
                 <option value={item.id} key={item.id}>
                   {item.name}
@@ -1282,6 +1450,19 @@ export function LiveWorkspace() {
           <Button type="submit" disabled={busy === "image"}>
             <Sparkles size={14} /> Generate visual
           </Button>
+          <label className="upload-dropzone">
+            <Upload size={16} />
+            <span>{uploadingMedia ? "Uploading…" : "Upload image or video"}</span>
+            <small>
+              {mediaCampaign ? "Attach it to the selected campaign" : "Attach to a campaign later"}
+            </small>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
+              disabled={uploadingMedia}
+              onChange={uploadMedia}
+            />
+          </label>
         </form>
       </section>
       <section className="live-panel">
@@ -1301,6 +1482,15 @@ export function LiveWorkspace() {
               {asset.download_url && (
                 <button type="button" onClick={() => void downloadAsset(asset)}>
                   Open asset <ArrowRight size={12} />
+                </button>
+              )}
+              {!asset.campaign_id && mediaCampaign && (
+                <button
+                  type="button"
+                  disabled={busy === `attach-${asset.id}`}
+                  onClick={() => void attachMedia(asset)}
+                >
+                  Attach to campaign <ArrowRight size={12} />
                 </button>
               )}
             </article>
@@ -1348,39 +1538,10 @@ export function LiveWorkspace() {
           )}
         </fieldset>
         <div className="live-divider" />
-        <form className="live-form" onSubmit={connect}>
-          <Field label="Platform">
-            <select
-              value={accountPlatform}
-              onChange={(e) => setAccountPlatform(e.target.value as Platform)}
-            >
-              {platforms.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Display name">
-            <input
-              required
-              value={accountName}
-              onChange={(e) => setAccountName(e.target.value)}
-              placeholder="VAE on LinkedIn"
-            />
-          </Field>
-          <Field label="External account ID">
-            <input
-              required
-              value={externalId}
-              onChange={(e) => setExternalId(e.target.value)}
-              placeholder="company-page-id"
-            />
-          </Field>
-          <Button type="submit" disabled={busy === "connect"}>
-            <Plus size={14} /> Connect account
-          </Button>
-        </form>
+        <p className="live-helper">
+          Connect through the provider consent screen. VAE never asks you to paste a token or
+          account ID.
+        </p>
         {accounts.map((account) => (
           <div className="live-list-row" key={account.id}>
             <Send size={15} />
@@ -1429,16 +1590,32 @@ export function LiveWorkspace() {
                 ))}
               </select>
             </Field>
-            <Field label="Account">
-              <select value={publishAccount} onChange={(e) => setPublishAccount(e.target.value)}>
-                <option value="">Select account</option>
-                {accounts.map((item) => (
-                  <option value={item.id} key={item.id}>
-                    {item.display_name}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <fieldset className="live-field platform-picker">
+              <legend>Publish to connected channels</legend>
+              <div className="platform-picker-grid">
+                {accounts
+                  .filter((item) => item.status === "connected")
+                  .map((item) => (
+                    <label key={item.id} className="platform-option">
+                      <input
+                        type="checkbox"
+                        checked={publishAccounts.includes(item.id)}
+                        onChange={() =>
+                          setPublishAccounts((current) =>
+                            current.includes(item.id)
+                              ? current.filter((value) => value !== item.id)
+                              : [...current, item.id],
+                          )
+                        }
+                      />
+                      <span>{item.display_name}</span>
+                    </label>
+                  ))}
+              </div>
+              {!accounts.some((item) => item.status === "connected") && (
+                <small className="live-helper">Connect a channel before publishing.</small>
+              )}
+            </fieldset>
             <Field label="Post copy">
               <textarea
                 value={publishText}
@@ -1446,7 +1623,7 @@ export function LiveWorkspace() {
                 placeholder={currentVariant?.caption || "Choose an approved variant."}
               />
             </Field>
-            <Field label="Schedule time">
+            <Field label={`Schedule time · ${workspace?.timezone ?? "UTC"}`}>
               <input
                 type="datetime-local"
                 value={scheduleAt}
@@ -1475,6 +1652,37 @@ export function LiveWorkspace() {
                   <small>{item.payload.text?.slice(0, 72) || "Campaign post"}</small>
                 </span>
                 <Status value={item.status} />
+                {item.status === "scheduled" || item.status === "failed" ? (
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Cancel scheduled post"
+                    onClick={() => void cancelScheduled(item.id)}
+                    disabled={busy === `cancel-${item.id}`}
+                  >
+                    <X size={14} />
+                  </button>
+                ) : null}
+                {item.status === "scheduled" ? (
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Reschedule post"
+                    onClick={() => void reschedule(item)}
+                  >
+                    <CalendarDays size={14} />
+                  </button>
+                ) : null}
+                {item.status === "failed" ? (
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Retry failed post"
+                    onClick={() => void retryScheduled(item.id)}
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                ) : null}
               </div>
             ))
           ) : (
@@ -1793,6 +2001,59 @@ export function LiveWorkspace() {
       </div>
     </div>
   );
+  const adminView = (
+    <div className="live-columns">
+      <section className="live-panel">
+        <p className="live-kicker">Administrator</p>
+        <h2>Payment review</h2>
+        <p>Verify UPI payments manually before activating tenant workspaces.</p>
+        <Button
+          size="sm"
+          onClick={() => void loadPaymentSubmissions()}
+          disabled={busy === "admin-payments"}
+        >
+          <RefreshCw size={14} /> Refresh submissions
+        </Button>
+      </section>
+      <section className="live-panel">
+        <h2>{paymentSubmissions.length} submissions</h2>
+        {paymentSubmissions.length ? (
+          paymentSubmissions.map((item) => (
+            <article className="live-list-row" key={item.id}>
+              <ShieldCheck size={16} />
+              <span>
+                <b>{item.display_name}</b>
+                <small>
+                  {item.email} · {item.utr_reference || "No UTR"}
+                </small>
+              </span>
+              <Status value={item.status} />
+              {item.status !== "approved" && item.status !== "rejected" ? (
+                <span className="live-inline-actions">
+                  <Button size="sm" onClick={() => void reviewPayment(item, "approve")}>
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void reviewPayment(item, "reject")}
+                  >
+                    Reject
+                  </Button>
+                </span>
+              ) : null}
+            </article>
+          ))
+        ) : (
+          <Empty
+            icon={ShieldCheck}
+            title="No payment submissions"
+            body="Refresh when a tenant submits UPI proof."
+          />
+        )}
+      </section>
+    </div>
+  );
   const content =
     view === "overview"
       ? overview
@@ -1804,7 +2065,9 @@ export function LiveWorkspace() {
             ? mediaView
             : view === "analytics"
               ? analyticsView
-              : publishingView;
+              : view === "admin"
+                ? adminView
+                : publishingView;
   const paletteItems = [
     ...nav.map((item) => ({
       label: `Open ${item.label}`,
@@ -1929,6 +2192,7 @@ export function LiveWorkspace() {
                 key={item.id}
                 onClick={() => {
                   setView(item.id);
+                  if (item.id === "admin") void loadPaymentSubmissions();
                   setSidebar(false);
                 }}
               >

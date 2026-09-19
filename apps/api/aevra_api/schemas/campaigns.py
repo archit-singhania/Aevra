@@ -25,7 +25,7 @@ def default_media_types() -> list[Literal["text", "image", "video"]]:
 
 
 class CampaignCreateRequest(BaseModel):
-    brand_id: uuid.UUID
+    brand_id: uuid.UUID | None = None
     name: str = Field(min_length=2, max_length=200)
     goal: str = Field(min_length=5, max_length=5000)
     product_service: str = Field(min_length=2, max_length=300)

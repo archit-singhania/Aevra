@@ -5,7 +5,24 @@ export type User = {
   email: string;
   display_name: string;
   is_active: boolean;
+  is_admin: boolean;
+  account_status: string;
   created_at: string;
+};
+
+export type PaymentSubmission = {
+  id: string;
+  user_id: string;
+  tenant_id: string;
+  email: string;
+  display_name: string;
+  amount: string;
+  currency: string;
+  utr_reference: string | null;
+  proof_asset_id: string | null;
+  status: string;
+  admin_note: string | null;
+  submitted_at: string | null;
 };
 
 export type Workspace = {
@@ -93,7 +110,7 @@ export type Citation = {
 
 export type MediaAsset = {
   id: string;
-  campaign_id: string;
+  campaign_id: string | null;
   media_type: "image" | "video";
   status: string;
   filename: string;
@@ -228,8 +245,53 @@ export const api = {
     request<{
       user: User;
       workspace: Workspace;
-      token: { access_token: string; expires_in: number };
+      token: { access_token: string; expires_in: number } | null;
+      account_status: string;
+      payment_required: boolean;
+      onboarding_token: string | null;
     }>("/auth/register", undefined, { method: "POST", body: JSON.stringify(payload) }),
+  paymentInstructions: () =>
+    request<{
+      amount: string;
+      currency: string;
+      upi_id: string;
+      qr_url: string;
+      support_email: string;
+      expires_in_days: number;
+    }>("/auth/onboarding/payment-instructions"),
+  submitPaymentPublic: (payload: {
+    onboarding_token: string;
+    utr_reference: string;
+    note?: string;
+  }) =>
+    request<{ status: string; submitted_at: string | null }>(
+      "/auth/onboarding/payment-submissions/public",
+      undefined,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+  submitPaymentProof: async (token: string, utr: string, note: string, file: File) => {
+    const form = new FormData();
+    form.append("onboarding_token", token);
+    if (utr) form.append("utr_reference", utr);
+    if (note) form.append("note", note);
+    form.append("file", file);
+    const response = await fetch(apiUrl("/auth/onboarding/payment-submissions/public/proof"), {
+      method: "POST",
+      body: form,
+    });
+    if (!response.ok) throw new ApiError("Payment proof upload failed.", response.status);
+    return (await response.json()) as { status: string; submitted_at: string | null };
+  },
+  adminPayments: (token: string) =>
+    request<PaymentSubmission[]>("/auth/admin/payment-submissions", token),
+  reviewPayment: (token: string, id: string, decision: "approve" | "reject", note?: string) =>
+    request<{ status: string }>(`/auth/admin/payment-submissions/${id}/${decision}`, token, {
+      method: "POST",
+      body: JSON.stringify({ note: note || null }),
+    }),
   me: (token: string) => request<User>("/auth/me", token),
   logout: () => request<void>("/auth/logout", undefined, { method: "POST" }),
   workspaces: (token: string) => request<Workspace[]>("/workspaces", token),
@@ -344,6 +406,33 @@ export const api = {
     request<ContentVariant[]>(`/workspaces/${workspaceId}/campaigns/${campaignId}/variants`, token),
   media: (token: string, workspaceId: string) =>
     request<MediaAsset[]>(`/workspaces/${workspaceId}/media/assets`, token),
+  uploadMedia: async (
+    token: string,
+    workspaceId: string,
+    campaignId: string | null,
+    file: File,
+  ) => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch(
+      apiUrl(
+        `/workspaces/${workspaceId}/media/assets/upload${campaignId ? `?campaign_id=${campaignId}` : ""}`,
+      ),
+      {
+        method: "POST",
+        body: form,
+        credentials: "include",
+        headers: token !== "cookie" ? { Authorization: `Bearer ${token}` } : undefined,
+      },
+    );
+    if (!response.ok) throw new ApiError("Media upload failed.", response.status);
+    return (await response.json()) as MediaAsset;
+  },
+  attachMedia: (token: string, workspaceId: string, assetId: string, campaignId: string) =>
+    request<MediaAsset>(`/workspaces/${workspaceId}/media/assets/${assetId}/attach`, token, {
+      method: "POST",
+      body: JSON.stringify({ campaign_id: campaignId }),
+    }),
   generateImage: (token: string, workspaceId: string, payload: Record<string, unknown>) =>
     request<{ assets: MediaAsset[] }>(`/workspaces/${workspaceId}/media/images/generate`, token, {
       method: "POST",
@@ -399,6 +488,24 @@ export const api = {
     }),
   scheduled: (token: string, workspaceId: string) =>
     request<ScheduledPost[]>(`/workspaces/${workspaceId}/operations/schedule`, token),
+  cancelScheduled: (token: string, workspaceId: string, postId: string) =>
+    request<ScheduledPost>(
+      `/workspaces/${workspaceId}/operations/schedule/${postId}/cancel`,
+      token,
+      { method: "POST" },
+    ),
+  reschedule: (token: string, workspaceId: string, postId: string, scheduledFor: string) =>
+    request<ScheduledPost>(
+      `/workspaces/${workspaceId}/operations/schedule/${postId}/reschedule`,
+      token,
+      { method: "POST", body: JSON.stringify({ scheduled_for: scheduledFor }) },
+    ),
+  retryScheduled: (token: string, workspaceId: string, postId: string) =>
+    request<ScheduledPost>(
+      `/workspaces/${workspaceId}/operations/schedule/${postId}/retry`,
+      token,
+      { method: "POST" },
+    ),
   metrics: (token: string, workspaceId: string) =>
     request<PostMetric[]>(`/workspaces/${workspaceId}/operations/metrics`, token),
 };

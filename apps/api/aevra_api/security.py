@@ -50,6 +50,24 @@ def decode_access_token(token: str, settings: Settings) -> uuid.UUID:
         raise AuthenticationError("Invalid or expired access token") from exc
 
 
+def create_onboarding_token(user_id: uuid.UUID, settings: Settings) -> tuple[str, int]:
+    now = datetime.now(UTC)
+    payload: dict[str, Any] = {
+        "sub": str(user_id), "iat": now,
+        "exp": now + timedelta(days=settings.payment_expiry_days),
+        "iss": "aevra-api", "aud": "aevra-onboarding",
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM), settings.payment_expiry_days * 86400
+
+
+def decode_onboarding_token(token: str, settings: Settings) -> uuid.UUID:
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM], audience="aevra-onboarding", issuer="aevra-api")
+        return uuid.UUID(str(payload["sub"]))
+    except (InvalidTokenError, KeyError, TypeError, ValueError) as exc:
+        raise AuthenticationError("Invalid or expired onboarding token") from exc
+
+
 def create_oauth_state(
     user_id: uuid.UUID, workspace_id: uuid.UUID, provider: str, settings: Settings
 ) -> str:

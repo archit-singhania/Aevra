@@ -10,7 +10,7 @@ from aevra_api.domain.errors import ConflictError, ForbiddenError, NotFoundError
 from aevra_api.repositories.operations import OperationsRepository
 from aevra_api.repositories.publishing import PublishingRepository
 from aevra_api.repositories.tenancy import TenancyRepository
-from aevra_api.schemas.operations import MetricsCreateRequest, ScheduleCreateRequest
+from aevra_api.schemas.operations import MetricsCreateRequest, ScheduleCreateRequest, ScheduleRescheduleRequest
 
 EDIT_ROLES = {"owner", "admin", "member"}
 
@@ -77,6 +77,81 @@ class OperationsService:
     def scheduled(self, user_id: uuid.UUID, workspace_id: uuid.UUID) -> list[ScheduledPost]:
         self._access(user_id, workspace_id)
         return self.repo.scheduled(user_id, workspace_id)
+
+    def cancel(self, user_id: uuid.UUID, workspace_id: uuid.UUID, post_id: uuid.UUID) -> ScheduledPost:
+        self._editor(user_id, workspace_id)
+        item = self.session.query(ScheduledPost).filter_by(id=post_id, workspace_id=workspace_id).first()
+        if item is None:
+            raise NotFoundError("Scheduled post not found")
+        if item.status not in {"scheduled", "failed"}:
+            raise ConflictError("Only scheduled or failed posts can be cancelled")
+        item.status = "cancelled"
+        self.session.add(
+            AuditLog(
+                workspace_id=workspace_id,
+                actor_user_id=user_id,
+                action="schedule.cancelled",
+                resource_type="scheduled_post",
+                resource_id=str(item.id),
+                details={},
+            )
+        )
+        self.session.commit()
+        return item
+
+    def reschedule(
+        self,
+        user_id: uuid.UUID,
+        workspace_id: uuid.UUID,
+        post_id: uuid.UUID,
+        request: ScheduleRescheduleRequest,
+    ) -> ScheduledPost:
+        self._editor(user_id, workspace_id)
+        if request.scheduled_for <= datetime.now(UTC):
+            raise ConflictError("scheduled_for must be in the future")
+        item = self.session.query(ScheduledPost).filter_by(id=post_id, workspace_id=workspace_id).first()
+        if item is None:
+            raise NotFoundError("Scheduled post not found")
+        if item.status not in {"scheduled", "failed"}:
+            raise ConflictError("Only scheduled or failed posts can be rescheduled")
+        item.scheduled_for = request.scheduled_for
+        item.status = "scheduled"
+        item.error_message = None
+        self.session.add(
+            AuditLog(
+                workspace_id=workspace_id,
+                actor_user_id=user_id,
+                action="schedule.rescheduled",
+                resource_type="scheduled_post",
+                resource_id=str(item.id),
+                details={"scheduled_for": request.scheduled_for.isoformat()},
+            )
+        )
+        self.session.commit()
+        return item
+
+    def retry(self, user_id: uuid.UUID, workspace_id: uuid.UUID, post_id: uuid.UUID) -> ScheduledPost:
+        self._editor(user_id, workspace_id)
+        item = self.session.query(ScheduledPost).filter_by(id=post_id, workspace_id=workspace_id).first()
+        if item is None:
+            raise NotFoundError("Scheduled post not found")
+        if item.status != "failed":
+            raise ConflictError("Only failed posts can be retried")
+        item.status = "scheduled"
+        item.attempts += 1
+        item.error_message = None
+        self.session.add(
+            AuditLog(
+                workspace_id=workspace_id,
+                actor_user_id=user_id,
+                action="schedule.retry_requested",
+                resource_type="scheduled_post",
+                resource_id=str(item.id),
+                details={"attempt": item.attempts},
+            )
+        )
+        self.session.commit()
+        return item
 
     def record_metrics(
         self, user_id: uuid.UUID, workspace_id: uuid.UUID, request: MetricsCreateRequest

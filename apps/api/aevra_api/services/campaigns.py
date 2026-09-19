@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from aevra_api.ai.contracts import EmbeddingProvider, LLMProvider
 from aevra_api.campaigns.workflow import CampaignState, CampaignWorkflow
 from aevra_api.config import Settings
-from aevra_api.db.models import Campaign, CampaignRun, CampaignStep, ContentVariant
+from aevra_api.db.models import BrandProfile, Campaign, CampaignRun, CampaignStep, ContentVariant
 from aevra_api.domain.errors import ConflictError, ForbiddenError, NotFoundError
 from aevra_api.repositories.brands import BrandRepository
 from aevra_api.repositories.campaigns import CampaignRepository
@@ -57,10 +57,34 @@ class CampaignService:
         self, user_id: uuid.UUID, workspace_id: uuid.UUID, request: CampaignCreateRequest
     ) -> Campaign:
         self._require_editor(user_id, workspace_id)
-        BrandService(self.session).get_brand(user_id, workspace_id, request.brand_id)
+        brand = (
+            BrandService(self.session).get_brand(user_id, workspace_id, request.brand_id)
+            if request.brand_id
+            else None
+        )
+        if brand is None:
+            # Brand and retrieval policy are backend-owned. Existing tenant
+            # brands remain valid, while new tenants can create campaigns
+            # without first entering an internal configuration screen.
+            existing_brands = self.brand_repository.list_brands_for_user(user_id, workspace_id)
+            brand = existing_brands[0] if existing_brands else BrandProfile(
+                workspace_id=workspace_id,
+                name="VAE default",
+                slug="vae-default",
+                description="Default VAE campaign intelligence configuration.",
+                industry="AI software",
+                tone_attributes=["clear", "strategic", "evidence-led"],
+                target_audiences=[],
+                preferred_ctas=["Learn more"],
+                preferred_hashtags=[],
+                status="active",
+            )
+            if brand.id is None:
+                self.brand_repository.add_brand(brand)
+                self.session.flush()
         campaign = Campaign(
             workspace_id=workspace_id,
-            brand_id=request.brand_id,
+            brand_id=brand.id,
             created_by_user_id=user_id,
             name=request.name.strip(),
             goal=request.goal.strip(),

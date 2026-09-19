@@ -8,6 +8,7 @@ from aevra_api.schemas.operations import (
     MetricsCreateRequest,
     MetricsResponse,
     ScheduleCreateRequest,
+    ScheduleRescheduleRequest,
     ScheduledPostResponse,
 )
 from aevra_api.services.operations import OperationsService
@@ -32,6 +33,40 @@ def scheduled(
 ) -> list[ScheduledPostResponse]:
     items = OperationsService(session).scheduled(current_user.id, workspace_id)
     return [ScheduledPostResponse.model_validate(item) for item in items]
+
+
+@router.post("/schedule/{post_id}/cancel", response_model=ScheduledPostResponse)
+def cancel_scheduled(
+    workspace_id: uuid.UUID,
+    post_id: uuid.UUID,
+    current_user: CurrentUser,
+    session: SessionDep,
+) -> ScheduledPostResponse:
+    item = OperationsService(session).cancel(current_user.id, workspace_id, post_id)
+    return ScheduledPostResponse.model_validate(item)
+
+
+@router.post("/schedule/{post_id}/reschedule", response_model=ScheduledPostResponse)
+def reschedule_scheduled(
+    workspace_id: uuid.UUID,
+    post_id: uuid.UUID,
+    request: ScheduleRescheduleRequest,
+    current_user: CurrentUser,
+    session: SessionDep,
+) -> ScheduledPostResponse:
+    item = OperationsService(session).reschedule(current_user.id, workspace_id, post_id, request)
+    return ScheduledPostResponse.model_validate(item)
+
+
+@router.post("/schedule/{post_id}/retry", response_model=ScheduledPostResponse)
+def retry_scheduled(
+    workspace_id: uuid.UUID,
+    post_id: uuid.UUID,
+    current_user: CurrentUser,
+    session: SessionDep,
+) -> ScheduledPostResponse:
+    item = OperationsService(session).retry(current_user.id, workspace_id, post_id)
+    return ScheduledPostResponse.model_validate(item)
 
 
 @router.post("/metrics", response_model=MetricsResponse, status_code=status.HTTP_201_CREATED)
